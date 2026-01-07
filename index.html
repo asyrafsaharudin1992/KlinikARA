@@ -3,38 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SwiftQueue Clinic Pro</title>
+  <title>SwiftQueue - Klinik Ara 24 Jam</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <style>
-    body { font-family: 'Inter', sans-serif; transition: all 0.3s ease; }
-    .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .clinic-header { 
+      font-family: "Helvetica", "Arial", sans-serif; 
+      font-weight: 700; 
+      color: #000080; 
+      letter-spacing: -0.02em;
+    }
+    body { font-family: 'Inter', sans-serif; }
     .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3); }
     .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
-    .number-card { transition: transform 0.2s, box-shadow 0.2s; }
-    .number-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-  </style>
-
-  <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18.2.0",
-      "react-dom": "https://esm.sh/react-dom@18.2.0/client",
-      "lucide-react": "https://esm.sh/lucide-react@0.344.0"
+    
+    /* Static Message Bar */
+    .message-bar {
+      background: #000080;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      font-weight: 600;
+      font-size: 1.2rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-  }
-  </script>
+
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased overflow-x-hidden">
+<body class="bg-slate-50 antialiased">
   <div id="root"></div>
 
-  <script type="module">
-    import React, { useState, useEffect, useMemo } from 'react';
-    import ReactDOM from 'react-dom';
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, where, limit, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    // --- YOUR FIREBASE CONFIGURATION ---
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
       authDomain: "clinicqueue-d9d3a.firebaseapp.com",
@@ -45,180 +52,155 @@
       measurementId: "G-S5NEHZD6F3"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const qRef = collection(db, "queue");
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const qRef = db.collection("queue");
 
-    function SwiftQueue() {
-      const [view, setView] = useState('reg'); 
-      const [queue, setQueue] = useState([]);
-      const [inputNum, setInputNum] = useState('');
-      const [audioEnabled, setAudioEnabled] = useState(false);
+    function App() {
+      const [view, setView] = React.useState('reg');
+      const [queue, setQueue] = React.useState([]);
+      const [inputNum, setInputNum] = React.useState('');
+      const [audioOn, setAudioOn] = React.useState(false);
 
-      // Real-time Data Sync
-      useEffect(() => {
-        const q = query(qRef, orderBy("time", "desc"));
-        return onSnapshot(q, (snapshot) => {
-          setQueue(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      React.useEffect(() => {
+        const unsub = qRef.orderBy("time", "desc").onSnapshot(snap => {
+          setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
+        return unsub;
       }, []);
 
-      // TV Voice Logic
-      useEffect(() => {
-        if (view === 'tv' && audioEnabled) {
-          const activeCall = queue.find(p => p.status === 'calling');
-          if (activeCall) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(`${activeCall.num}... please proceed to ${activeCall.loc}`);
-            utterance.rate = 0.85;
-            window.speechSynthesis.speak(utterance);
-          }
-        }
-      }, [queue, view, audioEnabled]);
+      const activeCall = React.useMemo(() => {
+        return queue.find(p => p.status === 'calling' || p.status === 'collecting');
+      }, [queue]);
 
-      // Handlers
-      const register = async (num) => {
-        const n = num || inputNum;
-        if (!n) return;
-        await addDoc(qRef, { num: parseInt(n), status: 'waiting', loc: '', time: Date.now() });
+      React.useEffect(() => {
+        if (view === 'tv' && audioOn && activeCall) {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(`Number ${activeCall.num}, please proceed to ${activeCall.loc}`);
+          u.rate = 0.85;
+          window.speechSynthesis.speak(u);
+        }
+      }, [activeCall, view, audioOn]);
+
+      const add = () => {
+        if (!inputNum) return;
+        qRef.add({ num: parseInt(inputNum), status: 'waiting', loc: '', time: Date.now() });
         setInputNum('');
       };
 
-      const updatePatient = async (id, status, loc) => {
-        await updateDoc(doc(db, "queue", id), { status, loc, time: Date.now() });
-      };
+      const up = (id, s, l) => qRef.doc(id).update({ status: s, loc: l, time: Date.now() });
+      const del = (id) => qRef.doc(id).delete();
 
-      const resetAll = async () => {
-        if(confirm("Danger: This will wipe all patient records for today. Proceed?")) {
-          const snap = await getDocs(qRef);
-          const batch = writeBatch(db);
-          snap.forEach(d => batch.delete(d.ref));
-          await batch.commit();
+      const resetData = async () => {
+        if (confirm("Delete ALL records for today?")) {
+            const snapshot = await qRef.get();
+            const batch = db.batch();
+            snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+            await batch.commit();
         }
       };
 
-      // UI Helpers
-      const StatusTag = ({ status }) => {
-        const map = {
-          waiting: "bg-amber-100 text-amber-700 border-amber-200",
-          calling: "bg-red-500 text-white animate-pulse border-red-600",
-          consulting: "bg-emerald-100 text-emerald-700 border-emerald-200",
-          pharmacy: "bg-blue-100 text-blue-700 border-blue-200"
-        };
-        return React.createElement('span', { className: `text-[10px] font-bold px-2 py-1 rounded-full border ${map[status]}` }, status.toUpperCase());
-      };
+      const LiveMonitor = ({ isDark = false, hideControls = true }) => (
+        React.createElement('div', { className: `bg-white rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'bg-white/5 border-white/10 text-white' : ''}` },
+          React.createElement('div', { className: `p-4 font-bold border-b text-[10px] uppercase tracking-widest ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}` }, 'Live Queue Monitor'),
+          React.createElement('div', { className: 'overflow-y-auto custom-scrollbar flex-1' },
+            queue.map(p => React.createElement('div', { key: p.id, className: `p-4 border-b flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-100'}` },
+              React.createElement('span', { className: 'text-2xl font-black' }, `#${p.num}`),
+              React.createElement('div', { className: 'flex items-center gap-2' },
+                React.createElement('span', { className: `text-[9px] font-bold px-2 py-1 rounded uppercase ${p.status === 'collecting' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600'}` }, 
+                  p.status === 'collecting' ? 'Dispensing' : p.status
+                ),
+                !hideControls && React.createElement('button', { onClick: () => del(p.id), className: 'text-slate-300 hover:text-red-500 ml-2' }, '✕')
+              )
+            ))
+          )
+        )
+      );
 
       return React.createElement('div', { className: 'min-h-screen flex flex-col' },
-        // HEADER
-        React.createElement('nav', { className: 'glass sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm' },
-          React.createElement('div', { className: 'flex items-center gap-2' },
-            React.createElement('div', { className: 'w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black' }, 'H'),
-            React.createElement('span', { className: 'font-extrabold text-xl tracking-tighter' }, 'HSO HEALTHCARE')
+        React.createElement('nav', { className: 'glass sticky top-0 z-50 p-4 flex justify-between items-center shadow-sm' },
+          React.createElement('div', { className: 'flex flex-col' },
+            React.createElement('span', { className: 'clinic-header text-xl' }, 'KLINIK ARA 24 JAM'),
+            React.createElement('span', { className: 'text-[9px] font-bold text-slate-400 tracking-widest uppercase' }, 'Kuala Lumpur')
           ),
-          React.createElement('div', { className: 'flex gap-2 bg-slate-100 p-1 rounded-xl' },
-            ['reg', 'doc', 'tv'].map(v => 
-              React.createElement('button', { 
-                key: v, 
-                onClick: () => setView(v),
-                className: `px-4 py-2 rounded-lg text-xs font-bold transition-all ${view === v ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`
-              }, v.toUpperCase())
-            )
+          React.createElement('div', { className: 'flex gap-1 bg-slate-100 p-1 rounded-xl' },
+            ['reg', 'doc', 'dispensary', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `px-3 py-2 rounded-lg text-[9px] font-black transition-all ${view === v ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}` }, v.toUpperCase()))
           )
         ),
 
-        // VIEWS
-        React.createElement('main', { className: 'flex-1' },
+        React.createElement('main', { className: 'flex-1 overflow-hidden' },
           
-          // 1. REGISTRATION
-          view === 'reg' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8' },
-            React.createElement('div', { className: 'lg:col-span-4 space-y-6' },
-              React.createElement('div', { className: 'bg-white p-6 rounded-2xl shadow-sm border' },
-                React.createElement('h2', { className: 'text-lg font-bold mb-4' }, 'Registration'),
-                React.createElement('div', { className: 'flex gap-2 mb-4' },
-                  React.createElement('input', { 
-                    type: 'number', placeholder: 'Manual Num (1001)', 
-                    value: inputNum, onChange: e => setInputNum(e.target.value),
-                    className: 'flex-1 border-slate-200 border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none'
-                  }),
-                  React.createElement('button', { onClick: () => register(), className: 'bg-blue-600 text-white px-6 rounded-xl font-bold' }, 'ADD')
-                ),
-                React.createElement('div', { className: 'grid grid-cols-4 gap-2' },
-                  [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008].map(n => 
-                    React.createElement('button', { key: n, onClick: () => register(n), className: 'p-2 bg-slate-50 border rounded-lg text-xs font-bold hover:bg-blue-50 hover:text-blue-600 transition' }, n)
-                  )
-                )
+          view === 'reg' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto grid lg:grid-cols-12 gap-8' },
+            React.createElement('div', { className: 'lg:col-span-5 flex flex-col gap-6' },
+              React.createElement('div', { className: 'bg-white p-8 rounded-2xl border shadow-sm' },
+                React.createElement('h2', { className: 'font-bold mb-6 text-slate-700 uppercase tracking-widest text-xs' }, 'Registration'),
+                React.createElement('input', { type: 'number', placeholder: 'Enter Number', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-5 border-2 rounded-2xl text-2xl font-bold outline-none' }),
+                React.createElement('button', { onClick: add, className: 'w-full py-5 bg-blue-600 text-white rounded-2xl font-bold text-lg' }, 'REGISTER PATIENT')
               ),
-              React.createElement('button', { onClick: resetAll, className: 'w-full py-3 text-slate-400 text-xs font-medium hover:text-red-500 transition' }, 'RESET DAILY DATA')
+              React.createElement('button', { onClick: resetData, className: 'text-slate-400 text-xs hover:text-red-500 transition' }, 'RESET SYSTEM DATA')
             ),
-            React.createElement('div', { className: 'lg:col-span-8 bg-white rounded-2xl border shadow-sm overflow-hidden' },
-              React.createElement('div', { className: 'p-4 border-b bg-slate-50 font-bold text-sm' }, 'Live Queue Monitor'),
-              queue.map(p => React.createElement('div', { key: p.id, className: 'p-4 border-b flex items-center justify-between hover:bg-slate-50 transition' },
-                React.createElement('span', { className: 'text-xl font-black' }, `#${p.num}`),
-                React.createElement(StatusTag, { status: p.status }),
-                React.createElement('button', { onClick: () => deleteDoc(doc(db, "queue", p.id)), className: 'text-slate-300 hover:text-red-500' }, '✕')
-              ))
-            )
+            React.createElement('div', { className: 'lg:col-span-7 h-[calc(100vh-200px)]' }, React.createElement(LiveMonitor, { hideControls: false }))
           ),
 
-          // 2. DOCTOR
-          view === 'doc' && React.createElement('div', { className: 'p-8 max-w-4xl mx-auto' },
-            React.createElement('div', { className: 'grid grid-cols-2 gap-6 mb-8' },
-              ['Consultation Room 1', 'Consultation Room 2'].map(room => 
-                React.createElement('div', { key: room, className: 'bg-white p-8 rounded-3xl border shadow-sm text-center space-y-4' },
-                  React.createElement('h3', { className: 'text-blue-600 font-black' }, room.toUpperCase()),
-                  React.createElement('button', { 
-                    onClick: () => {
-                      const next = [...queue].reverse().find(p => p.status === 'waiting');
-                      if(next) updatePatient(next.id, 'calling', room);
-                    },
-                    className: 'w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-200 active:scale-95 transition'
-                  }, 'CALL NEXT PATIENT')
-                )
-              )
-            ),
-            React.createElement('div', { className: 'bg-white rounded-2xl border' },
-              queue.filter(p => p.status !== 'waiting').map(p => React.createElement('div', { key: p.id, className: 'p-5 border-b flex items-center justify-between' },
-                React.createElement('div', null,
-                  React.createElement('div', { className: 'text-2xl font-black' }, `#${p.num}`),
-                  React.createElement('div', { className: 'text-xs text-slate-400 font-bold uppercase' }, p.loc || 'In Queue')
-                ),
-                React.createElement('div', { className: 'flex gap-2' },
-                  p.status === 'calling' && React.createElement('button', { onClick: () => updatePatient(p.id, 'consulting', p.loc), className: 'bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold' }, 'START CONSULT'),
-                  p.status === 'consulting' && React.createElement('button', { onClick: () => updatePatient(p.id, 'pharmacy', 'Dispensary'), className: 'bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold' }, 'DONE / SEND TO PHARMACY'),
-                  p.status === 'pharmacy' && React.createElement('button', { onClick: () => deleteDoc(doc(db, "queue", p.id)), className: 'bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold' }, 'COMPLETE BILLING')
-                )
-              ))
-            )
-          ),
-
-          // 3. TV DISPLAY
-          view === 'tv' && React.createElement('div', { className: 'tv-dark h-[calc(100vh-72px)] text-white flex' },
-            React.createElement('div', { className: 'flex-1 flex flex-col items-center justify-center p-20 border-r border-white/5' },
-              React.createElement('div', { className: 'text-blue-400 text-2xl font-black tracking-[0.5em] mb-10' }, 'NOW CALLING'),
-              React.createElement('div', { className: 'text-[20rem] font-black leading-none mb-10 drop-shadow-2xl' }, queue.find(p => p.status === 'calling')?.num || '----'),
-              React.createElement('div', { className: 'text-6xl font-medium text-emerald-400' }, queue.find(p => p.status === 'calling')?.loc || 'PLEASE WAIT'),
-              !audioEnabled && React.createElement('button', { 
-                onClick: () => { setAudioEnabled(true); alert("Audio System Online"); },
-                className: 'mt-20 px-8 py-3 bg-white/10 rounded-full text-slate-400 text-sm hover:bg-white/20 transition border border-white/10'
-              }, 'ACTIVATE AUDIO ENGINE')
-            ),
-            React.createElement('div', { className: 'w-1/3 bg-black/20 p-12' },
-                React.createElement('h2', { className: 'text-slate-500 font-bold tracking-widest mb-10 uppercase' }, 'Recent Calls'),
-                React.createElement('div', { className: 'space-y-10' }, 
-                  queue.filter(p => p.status !== 'waiting').slice(1, 5).map(h => 
-                    React.createElement('div', { key: h.id, className: 'flex justify-between items-end border-b border-white/5 pb-4' },
-                      React.createElement('span', { className: 'text-6xl font-bold' }, h.num),
-                      React.createElement('span', { className: 'text-slate-400 font-bold uppercase text-sm' }, h.loc)
-                    )
+          view === 'doc' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto flex flex-col h-[calc(100vh-120px)]' },
+            React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
+              React.createElement('div', { className: 'p-4 bg-slate-900 text-white font-bold uppercase text-xs tracking-widest' }, 'Doctor Console'),
+              React.createElement('div', { className: 'overflow-y-auto flex-1' },
+                queue.filter(p => ['waiting', 'calling', 'consulting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-slate-50' },
+                  React.createElement('span', { className: 'text-4xl font-black' }, `#${p.num}`),
+                  React.createElement('div', { className: 'flex gap-2' },
+                    p.status === 'waiting' && React.createElement(React.Fragment, null,
+                      React.createElement('button', { onClick: () => up(p.id, 'calling', 'Room 1'), className: 'bg-slate-800 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'CALL R1'),
+                      React.createElement('button', { onClick: () => up(p.id, 'calling', 'Room 2'), className: 'bg-slate-800 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'CALL R2')
+                    ),
+                    p.status === 'calling' && React.createElement(React.Fragment, null,
+                      React.createElement('button', { onClick: () => up(p.id, 'calling', p.loc), className: 'bg-amber-500 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'RE-CALL'),
+                      React.createElement('button', { onClick: () => up(p.id, 'consulting', p.loc), className: 'bg-blue-600 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'START CONSULT')
+                    ),
+                    p.status === 'consulting' && React.createElement('button', { onClick: () => up(p.id, 'ready_for_dispensary', 'Dispensary'), className: 'bg-emerald-600 text-white px-6 py-3 rounded-xl text-xs font-bold' }, 'SEND TO DISPENSARY')
                   )
-                )
+                ))
+              )
+            )
+          ),
+
+          view === 'dispensary' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto flex flex-col h-[calc(100vh-120px)]' },
+            React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
+              React.createElement('div', { className: 'p-4 bg-emerald-900 text-white font-bold uppercase text-xs tracking-widest' }, 'Dispensary Console'),
+              React.createElement('div', { className: 'overflow-y-auto flex-1' },
+                queue.filter(p => ['ready_for_dispensary', 'collecting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-emerald-50' },
+                  React.createElement('span', { className: 'text-4xl font-black text-emerald-900' }, `#${p.num}`),
+                  React.createElement('div', { className: 'flex gap-2' },
+                    React.createElement('button', { onClick: () => up(p.id, 'collecting', 'Dispensary'), className: `px-6 py-3 rounded-xl text-xs font-bold transition ${p.status === 'collecting' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}` }, p.status === 'collecting' ? 'RE-CALL' : 'CALL TO DISPENSARY'),
+                    p.status === 'collecting' && React.createElement('button', { onClick: () => del(p.id), className: 'bg-slate-800 text-white px-6 py-3 rounded-xl text-xs font-bold' }, 'FINISH')
+                  )
+                ))
+              )
+            )
+          ),
+
+          view === 'tv' && React.createElement('div', { className: 'flex flex-col h-[calc(100vh-76px)]' },
+            /* STATIC MESSAGE BAR */
+            React.createElement('div', { className: 'message-bar' },
+              'Sila bersabar sementara menunggu giliran anda. | Please be patient while waiting for your turn.'
+            ),
+            /* MAIN DISPLAY */
+            React.createElement('div', { className: 'tv-dark flex-1 flex text-white' },
+              React.createElement('div', { className: 'flex-[1.5] flex flex-col items-center justify-center p-10 border-r border-white/5 relative' },
+                React.createElement('div', { className: 'text-blue-400 text-3xl font-black mb-10 tracking-[0.3em] uppercase' }, 'Now Calling'),
+                React.createElement('div', { className: 'text-[25rem] font-black leading-none mb-10' }, activeCall?.num || '----'),
+                React.createElement('div', { className: 'text-7xl font-medium text-emerald-400 uppercase tracking-wide' }, activeCall?.loc || 'Please Wait'),
+                !audioOn && React.createElement('button', { onClick: () => setAudioOn(true), className: 'mt-10 px-8 py-4 bg-white/10 rounded-full border border-white/20 text-xs font-bold hover:bg-white/20 transition-all' }, 'ACTIVATE AUDIO')
+              ),
+              React.createElement('div', { className: 'flex-1 p-10 h-full' }, React.createElement(LiveMonitor, { isDark: true }))
             )
           )
         )
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(SwiftQueue));
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
   </script>
 </body>
 </html>
