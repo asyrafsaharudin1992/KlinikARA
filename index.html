@@ -20,20 +20,8 @@
       letter-spacing: -0.02em;
     }
     body { font-family: 'Inter', sans-serif; }
-    .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3); }
     .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
-    
-    /* Static Message Bar */
-    .message-bar {
-      background: #000080;
-      color: white;
-      text-align: center;
-      padding: 10px;
-      font-weight: 600;
-      font-size: 1.2rem;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
+    .message-bar { background: #000080; color: white; text-align: center; padding: 10px; font-weight: 600; font-size: 1.2rem; }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
   </style>
@@ -56,11 +44,29 @@
     const db = firebase.firestore();
     const qRef = db.collection("queue");
 
+    // Function to generate a professional chime tone
+    const playChime = (audioCtx) => {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(554.37, now); // C#5
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.5); // A4
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.5);
+    };
+
     function App() {
       const [view, setView] = React.useState('reg');
       const [queue, setQueue] = React.useState([]);
       const [inputNum, setInputNum] = React.useState('');
       const [audioOn, setAudioOn] = React.useState(false);
+      const audioCtx = React.useRef(null);
+      const lastCalledId = React.useRef(null);
+      const lastTimestamp = React.useRef(null);
 
       React.useEffect(() => {
         const unsub = qRef.orderBy("time", "desc").onSnapshot(snap => {
@@ -75,10 +81,25 @@
 
       React.useEffect(() => {
         if (view === 'tv' && audioOn && activeCall) {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(`Number ${activeCall.num}, please proceed to ${activeCall.loc}`);
-          u.rate = 0.85;
-          window.speechSynthesis.speak(u);
+          if (activeCall.id !== lastCalledId.current || activeCall.time !== lastTimestamp.current) {
+            lastCalledId.current = activeCall.id;
+            lastTimestamp.current = activeCall.time;
+
+            if (!audioCtx.current) audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 1. Play Chime
+            playChime(audioCtx.current);
+
+            // 2. Wait 600ms then Speak
+            setTimeout(() => {
+              window.speechSynthesis.cancel();
+              const destination = activeCall.loc === 'Dispensary' ? 'the Dispensary counter' : activeCall.loc;
+              const utterance = new SpeechSynthesisUtterance(`Number ${activeCall.num}. Please proceed to ${destination}.`);
+              utterance.lang = 'en-US';
+              utterance.rate = 0.8;
+              window.speechSynthesis.speak(utterance);
+            }, 600);
+          }
         }
       }, [activeCall, view, audioOn]);
 
@@ -118,7 +139,7 @@
       );
 
       return React.createElement('div', { className: 'min-h-screen flex flex-col' },
-        React.createElement('nav', { className: 'glass sticky top-0 z-50 p-4 flex justify-between items-center shadow-sm' },
+        React.createElement('nav', { className: 'bg-white border-b sticky top-0 z-50 p-4 flex justify-between items-center shadow-sm' },
           React.createElement('div', { className: 'flex flex-col' },
             React.createElement('span', { className: 'clinic-header text-xl' }, 'KLINIK ARA 24 JAM'),
             React.createElement('span', { className: 'text-[9px] font-bold text-slate-400 tracking-widest uppercase' }, 'Kuala Lumpur')
@@ -135,7 +156,7 @@
               React.createElement('div', { className: 'bg-white p-8 rounded-2xl border shadow-sm' },
                 React.createElement('h2', { className: 'font-bold mb-6 text-slate-700 uppercase tracking-widest text-xs' }, 'Registration'),
                 React.createElement('input', { type: 'number', placeholder: 'Enter Number', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-5 border-2 rounded-2xl text-2xl font-bold outline-none' }),
-                React.createElement('button', { onClick: add, className: 'w-full py-5 bg-blue-600 text-white rounded-2xl font-bold text-lg' }, 'REGISTER PATIENT')
+                React.createElement('button', { onClick: add, className: 'w-full py-5 bg-blue-700 text-white rounded-2xl font-bold text-lg hover:bg-blue-800 transition-colors' }, 'REGISTER PATIENT')
               ),
               React.createElement('button', { onClick: resetData, className: 'text-slate-400 text-xs hover:text-red-500 transition' }, 'RESET SYSTEM DATA')
             ),
@@ -145,8 +166,8 @@
           view === 'doc' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto flex flex-col h-[calc(100vh-120px)]' },
             React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
               React.createElement('div', { className: 'p-4 bg-slate-900 text-white font-bold uppercase text-xs tracking-widest' }, 'Doctor Console'),
-              React.createElement('div', { className: 'overflow-y-auto flex-1' },
-                queue.filter(p => ['waiting', 'calling', 'consulting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-slate-50' },
+              React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
+                queue.filter(p => ['waiting', 'calling', 'consulting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-slate-50 transition-colors' },
                   React.createElement('span', { className: 'text-4xl font-black' }, `#${p.num}`),
                   React.createElement('div', { className: 'flex gap-2' },
                     p.status === 'waiting' && React.createElement(React.Fragment, null,
@@ -167,8 +188,8 @@
           view === 'dispensary' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto flex flex-col h-[calc(100vh-120px)]' },
             React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
               React.createElement('div', { className: 'p-4 bg-emerald-900 text-white font-bold uppercase text-xs tracking-widest' }, 'Dispensary Console'),
-              React.createElement('div', { className: 'overflow-y-auto flex-1' },
-                queue.filter(p => ['ready_for_dispensary', 'collecting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-emerald-50' },
+              React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
+                queue.filter(p => ['ready_for_dispensary', 'collecting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-emerald-50 transition-colors' },
                   React.createElement('span', { className: 'text-4xl font-black text-emerald-900' }, `#${p.num}`),
                   React.createElement('div', { className: 'flex gap-2' },
                     React.createElement('button', { onClick: () => up(p.id, 'collecting', 'Dispensary'), className: `px-6 py-3 rounded-xl text-xs font-bold transition ${p.status === 'collecting' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}` }, p.status === 'collecting' ? 'RE-CALL' : 'CALL TO DISPENSARY'),
@@ -180,17 +201,24 @@
           ),
 
           view === 'tv' && React.createElement('div', { className: 'flex flex-col h-[calc(100vh-76px)]' },
-            /* STATIC MESSAGE BAR */
-            React.createElement('div', { className: 'message-bar' },
-              'Sila bersabar sementara menunggu giliran anda. | Please be patient while waiting for your turn.'
+            React.createElement('div', { className: 'message-bar uppercase tracking-wide' },
+              'Please be patient while waiting for your turn.'
             ),
-            /* MAIN DISPLAY */
             React.createElement('div', { className: 'tv-dark flex-1 flex text-white' },
               React.createElement('div', { className: 'flex-[1.5] flex flex-col items-center justify-center p-10 border-r border-white/5 relative' },
                 React.createElement('div', { className: 'text-blue-400 text-3xl font-black mb-10 tracking-[0.3em] uppercase' }, 'Now Calling'),
                 React.createElement('div', { className: 'text-[25rem] font-black leading-none mb-10' }, activeCall?.num || '----'),
                 React.createElement('div', { className: 'text-7xl font-medium text-emerald-400 uppercase tracking-wide' }, activeCall?.loc || 'Please Wait'),
-                !audioOn && React.createElement('button', { onClick: () => setAudioOn(true), className: 'mt-10 px-8 py-4 bg-white/10 rounded-full border border-white/20 text-xs font-bold hover:bg-white/20 transition-all' }, 'ACTIVATE AUDIO')
+                
+                !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-20 rounded-l-3xl p-12 text-center' }, 
+                  React.createElement('div', { className: 'max-w-md' },
+                    React.createElement('h2', { className:'text-3xl font-bold mb-6'}, 'Voice System Required'),
+                    React.createElement('button', { 
+                      onClick: () => setAudioOn(true), 
+                      className: 'w-full px-12 py-6 bg-blue-600 text-white rounded-full font-black text-xl hover:scale-105 transition shadow-2xl' 
+                    }, 'ACTIVATE AUDIO')
+                  )
+                )
               ),
               React.createElement('div', { className: 'flex-1 p-10 h-full' }, React.createElement(LiveMonitor, { isDark: true }))
             )
