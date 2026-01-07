@@ -1,0 +1,130 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinic Queue System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, where, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
+  authDomain: "clinicqueue-d9d3a.firebaseapp.com",
+  projectId: "clinicqueue-d9d3a",
+  storageBucket: "clinicqueue-d9d3a.firebasestorage.app",
+  messagingSenderId: "45318170672",
+  appId: "1:45318170672:web:3edd81acbb292c2889a5f5",
+  measurementId: "G-S5NEHZD6F3"
+};
+       
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const queueRef = collection(db, "clinicQueue");
+
+        // UI ELEMENTS
+        const views = ['registration', 'doctor', 'tv'];
+        window.switchView = (viewId) => {
+            views.forEach(v => document.getElementById(v + 'View').classList.add('hidden'));
+            document.getElementById(viewId + 'View').classList.remove('hidden');
+        };
+
+        // --- REGISTRATION LOGIC ---
+        window.registerPatient = async () => {
+            const nextNum = await getNextQueueNumber();
+            await addDoc(queueRef, {
+                number: nextNum,
+                status: "waiting",
+                location: "",
+                timestamp: Date.now()
+            });
+            alert("Registered Patient: " + nextNum);
+        };
+
+        async function getNextQueueNumber() {
+            // Logic to find last number or start at 1001
+            return Math.floor(Math.random() * (1200 - 1001) + 1001); // Simplified for demo
+        }
+
+        // --- DOCTOR LOGIC ---
+        window.callPatient = async (roomName) => {
+            const q = query(queueRef, where("status", "==", "waiting"), orderBy("timestamp", "asc"), limit(1));
+            onSnapshot(q, (snapshot) => {
+                if (!snapshot.empty) {
+                    const patientId = snapshot.docs[0].id;
+                    updateDoc(doc(db, "clinicQueue", patientId), {
+                        status: "calling",
+                        location: roomName
+                    });
+                }
+            }, { onlyOnce: true });
+        };
+
+        window.completeConsultation = async () => {
+             // Logic to update status to 'dispensary'
+        };
+
+        // --- TV & AUDIO LOGIC ---
+        const lastCalled = { id: null };
+        onSnapshot(query(queueRef, where("status", "==", "calling"), orderBy("timestamp", "desc"), limit(1)), (snapshot) => {
+            if (!snapshot.empty) {
+                const data = snapshot.docs[0].data();
+                if (lastCalled.id !== snapshot.docs[0].id) {
+                    lastCalled.id = snapshot.docs[0].id;
+                    updateTVDisplay(data.number, data.location);
+                    playAudio(data.number, data.location);
+                }
+            }
+        });
+
+        function updateTVDisplay(num, loc) {
+            document.getElementById('tvNum').innerText = num;
+            document.getElementById('tvLoc').innerText = loc;
+        }
+
+        function playAudio(num, loc) {
+            const speech = new SpeechSynthesisUtterance(`Number ${num}, please proceed to ${loc}`);
+            speech.rate = 0.8;
+            window.speechSynthesis.speak(speech);
+        }
+    </script>
+    <style>
+        .tv-screen { background: #0f172a; color: #f8fafc; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="p-4 bg-white shadow flex gap-4 justify-center">
+        <button onclick="switchView('registration')" class="px-4 py-2 bg-blue-600 text-white rounded">Registration</button>
+        <button onclick="switchView('doctor')" class="px-4 py-2 bg-green-600 text-white rounded">Doctor</button>
+        <button onclick="switchView('tv')" class="px-4 py-2 bg-black text-white rounded">TV Display</button>
+    </nav>
+
+    <div id="registrationView" class="p-8 max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4">Patient Registration</h2>
+        <button onclick="registerPatient()" class="w-full py-6 bg-blue-500 text-white text-2xl rounded-xl shadow-lg hover:bg-blue-600">Issue New Ticket (1001-1200)</button>
+    </div>
+
+    <div id="doctorView" class="hidden p-8 max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4">Doctor Dashboard</h2>
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="callPatient('Consultation Room 1')" class="py-10 bg-indigo-600 text-white rounded-lg">Call Next (Room 1)</button>
+            <button onclick="callPatient('Consultation Room 2')" class="py-10 bg-purple-600 text-white rounded-lg">Call Next (Room 2)</button>
+        </div>
+    </div>
+
+    <div id="tvView" class="hidden tv-screen">
+        <div class="text-4xl mb-4 uppercase tracking-widest text-blue-400">Now Calling</div>
+        <div id="tvNum" class="text-[15rem] font-black leading-none text-white">----</div>
+        <div id="tvLoc" class="text-6xl font-bold text-green-400 mt-4 underline decoration-4">Waiting...</div>
+        <button onclick="window.speechSynthesis.speak(new SpeechSynthesisUtterance('Audio active'))" class="mt-20 text-gray-500 text-sm italic">Click once to activate Voice</button>
+    </div>
+
+</body>
+</html>
