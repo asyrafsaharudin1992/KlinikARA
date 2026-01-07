@@ -18,34 +18,27 @@
     }
   </style>
 
-  <!-- BEGIN FIREBASE CONFIGURATION PLACEHOLDER -->
-  <!-- 
-    Instructions:
-    1. Uncomment the script below.
-    2. Replace the firebaseConfig object with your project credentials from the Firebase Console.
-    3. You can then import 'firebase/app' and other services in your .tsx files via the import map if needed.
-  -->
-  <!--
+  <!-- BEGIN FIREBASE CONFIGURATION -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
 
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID",
-      measurementId: "YOUR_MEASUREMENT_ID"
+      apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
+      authDomain: "clinicqueue-d9d3a.firebaseapp.com",
+      projectId: "clinicqueue-d9d3a",
+      storageBucket: "clinicqueue-d9d3a.firebasestorage.app",
+      messagingSenderId: "45318170672",
+      appId: "1:45318170672:web:3edd81acbb292c2889a5f5",
+      measurementId: "G-S5NEHZD6F3"
     };
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
-    console.log("Firebase initialized successfully");
+    console.log("Firebase initialized successfully with project clinicqueue-d9d3a");
   </script>
-  -->
-  <!-- END FIREBASE CONFIGURATION PLACEHOLDER -->
+  <!-- END FIREBASE CONFIGURATION -->
 
 <script type="importmap">
 {
@@ -63,3 +56,4 @@
   <div id="root"></div>
 </body>
 </html>
+
