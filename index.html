@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SwiftQueue Ultimate - Klinik Ara 24 Jam</title>
+  <title>SwiftQueue Pro - Precision Edition</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-  
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -14,32 +13,27 @@
 
   <style>
     .clinic-header { font-family: "Helvetica", "Arial", sans-serif; font-weight: 700; color: #000080; letter-spacing: -0.02em; }
-    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; height: 100vh; }
     .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
-    .message-bar { background: #000080; color: white; text-align: center; padding: 10px; font-weight: 600; font-size: 1.1rem; }
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .message-bar { background: #000080; color: white; text-align: center; padding: 12px; font-weight: 600; font-size: 1.1rem; }
+    .custom-scrollbar::-webkit-scrollbar { width: 8px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-    .tv-dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
-    .status-pill { font-size: 0.55rem; padding: 2px 6px; border-radius: 999px; font-weight: 800; text-transform: uppercase; }
-    .patient-card-inactive { opacity: 0.45; filter: grayscale(0.5); background-color: #f1f5f9; }
+    .tv-dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+    .status-pill { font-size: 0.65rem; padding: 3px 8px; border-radius: 999px; font-weight: 800; text-transform: uppercase; }
+    .tv-status-pill { font-size: 1rem; padding: 4px 14px; border-radius: 999px; font-weight: 900; text-transform: uppercase; }
+    .patient-card-inactive { opacity: 0.4; filter: grayscale(0.8); background-color: #f1f5f9; }
     .tv-clock { font-family: monospace; letter-spacing: 0.05em; font-weight: 700; }
-    .log-entry { font-size: 0.6rem; color: #64748b; line-height: 1.2; }
+    .log-entry { font-size: 0.65rem; color: #64748b; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     
     @keyframes pulse-call {
       0% { color: #60a5fa; transform: scale(1); }
       50% { color: #ffffff; transform: scale(1.05); text-shadow: 0 0 50px rgba(255,255,255,0.4); }
       100% { color: #60a5fa; transform: scale(1); }
     }
-    .animate-call-flash { animation: pulse-call 1.5s ease-in-out infinite; }
-    
-    .search-input { 
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E"); 
-      background-repeat: no-repeat; background-position: 10px center; background-size: 14px; 
-      padding-left: 32px; font-size: 0.8rem; height: 36px; width: 180px; 
-    }
+    .animate-call-flash { animation: pulse-call 1.5s ease-in-out infinite; transform-origin: center; }
   </style>
 </head>
-<body class="antialiased">
+<body>
   <div id="root"></div>
 
   <script>
@@ -56,32 +50,55 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let audioCtx = null;
-    const initAudio = () => { 
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+    let audioCtx = null, masterGain = null, reverbNode = null, noiseGain = null;
+
+    const initAudio = async () => { 
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            reverbNode = audioCtx.createConvolver();
+            const length = audioCtx.sampleRate * 4; 
+            const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+            for (let i = 0; i < 2; i++) {
+                const channel = impulse.getChannelData(i);
+                for (let j = 0; j < length; j++) {
+                    channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 3.5);
+                }
+            }
+            reverbNode.buffer = impulse;
+            noiseGain = audioCtx.createGain(); noiseGain.gain.value = 0.02;
+            const whiteNoise = audioCtx.createBufferSource();
+            const bufferSize = 2 * audioCtx.sampleRate, noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), out = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) { out[i] = Math.random() * 2 - 1; }
+            whiteNoise.buffer = noiseBuffer; whiteNoise.loop = true;
+            const noiseFilter = audioCtx.createBiquadFilter(); noiseFilter.type = 'lowpass'; noiseFilter.frequency.value = 350;
+            whiteNoise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
+            whiteNoise.start();
+            masterGain.connect(reverbNode); reverbNode.connect(audioCtx.destination); masterGain.connect(audioCtx.destination);
+        }
         if (audioCtx.state === 'suspended') audioCtx.resume(); 
-        const source = audioCtx.createBufferSource();
-        source.buffer = audioCtx.createBuffer(1, 1, 22050);
-        source.connect(audioCtx.destination);
-        source.start(0);
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
     };
     
-    const playChime = () => { 
-        initAudio(); const now = audioCtx.currentTime; 
-        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); 
-        osc.type = 'sine'; osc.frequency.setValueAtTime(554.37, now); osc.frequency.exponentialRampToValueAtTime(440, now + 0.5); 
-        gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.1); 
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5); 
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.5); 
+    const playChime = (type = 'start') => {
+        initAudio(); const now = audioCtx.currentTime;
+        const playTone = (freq, start, duration) => {
+            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(freq, start);
+            g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(0.15, start + 0.1); g.gain.exponentialRampToValueAtTime(0.001, start + duration);
+            osc.connect(g); g.connect(masterGain); osc.start(start); osc.stop(start + duration);
+        };
+        if (type === 'start') {
+            playTone(554.37, now, 1.8); playTone(440.00, now + 0.5, 1.8); playTone(554.37, now + 1.0, 2.0);
+        } else {
+            playTone(440.00, now, 1.2); playTone(349.23, now + 0.4, 1.5);
+        }
     };
 
     function App() {
       const [view, setView] = React.useState('reg');
-      // Branch naming initialized with your locations
       const [branchKey, setBranchKey] = React.useState(localStorage.getItem('selectedBranchKey') || 'B1');
       const [branchNames, setBranchNames] = React.useState(JSON.parse(localStorage.getItem('clinicBranchNames')) || { B1: 'Kajang', B2: 'Seri Kembangan', B3: 'Semenyih' });
-      
       const [queue, setQueue] = React.useState([]);
       const [inputNum, setInputNum] = React.useState('');
       const [inputName, setInputName] = React.useState('');
@@ -115,141 +132,160 @@
         p.num.toString().includes(searchTerm) || p.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
-      const getTS = () => new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-
       React.useEffect(() => {
         if (view === 'tv' && audioOn && activeCall) {
           if (activeCall.callTrigger > lastTrigger.current) {
             lastTrigger.current = activeCall.callTrigger;
-            setFlash(true); playChime();
-            setTimeout(() => setFlash(false), 8000);
+            setFlash(true); playChime('start');
+            if(noiseGain) noiseGain.gain.setTargetAtTime(0.005, audioCtx.currentTime, 0.5);
             setTimeout(() => {
-              window.speechSynthesis.cancel();
-              const utterance = new SpeechSynthesisUtterance(`Number ${activeCall.num}. Please proceed to ${activeCall.loc}.`);
-              utterance.lang = 'en-US'; utterance.rate = 0.8;
-              window.currentUtterance = utterance;
-              window.speechSynthesis.speak(utterance);
-            }, 600);
+                window.speechSynthesis.cancel();
+                const msg = `Attention please. Patient number ${activeCall.num}. Please proceed to ${activeCall.loc}.`;
+                const utterance = new SpeechSynthesisUtterance(`${msg} ... I repeat ... ${msg}`);
+                utterance.lang = 'en-GB'; utterance.rate = 0.8; utterance.pitch = 1.0;
+                utterance.onend = () => { playChime('end'); if(noiseGain) noiseGain.gain.setTargetAtTime(0.02, audioCtx.currentTime + 1, 0.5); setTimeout(() => setFlash(false), 2000); };
+                window.currentUtterance = utterance; window.speechSynthesis.speak(utterance);
+            }, 3800); 
           }
         }
       }, [activeCall, view, audioOn]);
 
-      const updatePatient = (id, s, l, patient, isTrigger = false) => {
-        const data = { status: s, loc: l, time: Date.now(), logs: [...(patient.logs || []), `${s.toUpperCase()} (${l}): ${getTS()}`] };
-        if (isTrigger) data.callTrigger = Date.now();
+      const updatePatient = (id, s, l, p, trigger = false) => {
+        const data = { status: s, loc: l, time: Date.now(), logs: [...(p.logs || []), `${s.toUpperCase()} (${l}) at ${new Date().toLocaleTimeString()}`] };
+        if (trigger) data.callTrigger = Date.now();
         qRef.doc(id).update(data);
       };
 
       const SidebarMonitor = ({ isDark = false }) => (
-        React.createElement('div', { className: `bg-white rounded-3xl border shadow-lg overflow-hidden flex flex-col h-full ${isDark ? 'bg-white/5 border-white/10 text-white' : ''}` },
-          React.createElement('div', { className: `p-4 border-b ${isDark ? 'bg-white/5 border-white/10 text-white/40' : 'bg-slate-50 text-slate-400'} text-[10px] font-bold uppercase tracking-widest` }, branchNames[branchKey] + ' Monitor'),
-          React.createElement('div', { className: 'overflow-y-auto custom-scrollbar flex-1' },
+        React.createElement('div', { className: `rounded-3xl border shadow-lg overflow-hidden flex flex-col h-full ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}` },
+          React.createElement('div', { className: `p-4 border-b font-bold uppercase tracking-widest text-[10px] text-center ${isDark ? 'border-white/10 text-white/40' : 'bg-slate-50 text-slate-400'}` }, branchNames[branchKey] + ' Monitor'),
+          React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
             queue.map(p => React.createElement('div', { key: p.id, className: `p-3 border-b flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-100'}` },
               React.createElement('div', null,
-                React.createElement('span', { className: 'text-xl font-black' }, `#${p.num}`),
-                React.createElement('div', { className: `text-[9px] font-bold uppercase ${p.loc.includes('NOT') ? 'text-red-500' : 'opacity-50'}` }, p.loc)
+                React.createElement('span', { className: `text-xl font-black ${isDark ? 'text-white' : 'text-slate-800'}` }, `#${p.num}`),
+                !isDark && React.createElement('div', { className: `text-[9px] font-bold uppercase ${p.loc.includes('NOT') ? 'text-red-500' : 'opacity-50'}` }, p.loc)
               ),
-              React.createElement('span', { className: `status-pill ${p.status.includes('not') ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}` }, p.status)
+              React.createElement('span', { className: `status-pill ${p.status.includes('not') ? 'bg-red-100 text-red-700' : isDark ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-600'}` }, p.status)
             ))
           )
         )
       );
 
-      return React.createElement('div', { className: 'min-h-screen flex flex-col' },
+      return React.createElement('div', { className: 'h-screen flex flex-col' },
         React.createElement('nav', { className: 'bg-white border-b p-3 flex justify-between items-center shadow-sm sticky top-0 z-50' },
-          React.createElement('div', {className: 'flex items-center gap-2'}, 
+          React.createElement('div', {className: 'flex items-center gap-3'}, 
             React.createElement('span', { className: 'clinic-header text-xl' }, 'KLINIK ARA 24 JAM'),
             React.createElement('div', {className: 'flex items-center gap-1'},
-              React.createElement('select', { value: branchKey, onChange: (e) => setBranchKey(e.target.value), className: 'bg-blue-50 text-blue-800 text-[10px] font-black rounded-lg px-2 py-1 outline-none' }, 
+              React.createElement('select', { value: branchKey, onChange: (e) => setBranchKey(e.target.value), className: 'bg-blue-50 text-blue-800 text-[11px] font-black rounded-lg px-3 py-1.5 outline-none' }, 
                   Object.keys(branchNames).map(k => React.createElement('option', {key: k, value: k}, branchNames[k].toUpperCase()))
               ),
-              React.createElement('button', { onClick: () => { const n = prompt("New Branch Name:", branchNames[branchKey]); if(n) setBranchNames(p=>({...p,[branchKey]:n}))}, className: 'text-[10px] bg-slate-100 p-1 rounded' }, '✎')
+              React.createElement('button', { onClick: () => {const n=prompt("Rename Branch:", branchNames[branchKey]); if(n) setBranchNames(p=>({...p,[branchKey]:n}))}, className: 'text-[10px] bg-slate-100 p-1.5 rounded' }, '✎')
             )
           ),
           React.createElement('div', { className: 'flex gap-1 bg-slate-100 p-1 rounded-xl' },
-            ['reg', 'doc', 'dispensary', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `px-3 py-1.5 rounded-lg text-[9px] font-black ${view === v ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}` }, v.toUpperCase()))
+            ['reg', 'doc', 'dispensary', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `px-4 py-1.5 rounded-lg text-[10px] font-black ${view === v ? 'bg-white text-blue-700 shadow-md scale-105' : 'text-slate-500'}` }, v.toUpperCase()))
           )
         ),
 
         React.createElement('main', { className: 'flex-1 overflow-hidden' },
-          view === 'reg' && React.createElement('div', { className: 'p-8 max-w-7xl mx-auto grid lg:grid-cols-12 gap-8 h-[calc(100vh-100px)]' },
-            React.createElement('div', { className: 'lg:col-span-4 space-y-4' },
-              React.createElement('div', { className: 'bg-white p-6 rounded-3xl border shadow-xl' },
-                React.createElement('h2', {className: 'text-[10px] font-black text-slate-400 uppercase mb-4'}, branchNames[branchKey] + ' Entry'),
-                React.createElement('input', { placeholder: 'Patient Name', value: inputName, onChange: e => setInputName(e.target.value), className: 'w-full mb-3 p-4 border rounded-xl outline-none' }),
-                React.createElement('input', { type: 'number', placeholder: 'Queue No', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-4 border rounded-xl text-3xl font-black' }),
-                React.createElement('button', { onClick: () => {if(!inputNum)return; qRef.add({num:parseInt(inputNum),name:inputName||"Patient",status:'waiting',loc:'Waiting Area',time:Date.now(),logs:[`Registered: ${getTS()}`]}); setInputNum(''); setInputName('')}, className: 'w-full py-4 bg-blue-700 text-white rounded-2xl font-black' }, 'REGISTER')
+          
+          view === 'reg' && React.createElement('div', { className: 'p-8 max-w-7xl mx-auto grid lg:grid-cols-12 gap-8 h-full pb-20' },
+            React.createElement('div', { className: 'lg:col-span-4 space-y-6' },
+              React.createElement('div', { className: 'bg-white p-6 rounded-3xl border border-slate-200 shadow-xl' },
+                React.createElement('h2', {className: 'text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest'}, branchNames[branchKey]),
+                React.createElement('input', { placeholder: 'Patient Name', value: inputName, onChange: e => setInputName(e.target.value), className: 'w-full mb-3 p-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20' }),
+                React.createElement('input', { type: 'number', placeholder: 'Queue No', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-4 border rounded-2xl text-4xl font-black outline-none focus:ring-2 focus:ring-blue-500/20' }),
+                React.createElement('button', { onClick: () => {if(!inputNum)return; qRef.add({num:parseInt(inputNum),name:inputName||"Patient",status:'waiting',loc:'Waiting Area',time:Date.now(),logs:[`Registered at ${new Date().toLocaleTimeString()}`]}); setInputNum(''); setInputName('')}, className: 'w-full py-5 bg-blue-700 text-white rounded-2xl font-black text-lg shadow-lg hover:bg-blue-800' }, 'REGISTER PATIENT')
               ),
-              React.createElement('button', { onClick: () => { if(confirm("RESET ALL DATA FOR "+branchNames[branchKey]+"?")) qRef.get().then(s=>s.docs.forEach(d=>d.ref.delete())) }, className: 'text-[10px] text-red-500 font-bold ml-4' }, 'Reset Branch Queue')
+              React.createElement('button', { onClick: () => {if(confirm("RESET?")) qRef.get().then(s=>s.docs.forEach(d=>d.ref.delete()))}, className: 'text-red-500 text-[10px] font-bold opacity-30 ml-4 hover:opacity-100' }, 'RESET BRANCH DATA')
             ),
-            React.createElement('div', { className: 'lg:col-span-8' }, React.createElement(SidebarMonitor))
+            React.createElement('div', { className: 'lg:col-span-8 h-[calc(100vh-160px)]' }, React.createElement(SidebarMonitor))
           ),
 
-          view === 'doc' && React.createElement('div', { className: 'p-6 max-w-7xl mx-auto flex flex-col h-[calc(100vh-100px)]' },
-            React.createElement('div', { className: 'flex justify-between items-center mb-4' },
-              React.createElement('input', { placeholder: 'Search...', value: searchTerm, onChange: e => setSearchTerm(e.target.value), className: 'search-input border rounded-full outline-none bg-white' }),
-              React.createElement('button', { onClick: () => queue.filter(p=>p.status==='finished').forEach(p=>qRef.doc(p.id).delete()), className: 'text-red-500 text-[10px] font-bold' }, 'CLEAR FINISHED')
+          view === 'doc' && React.createElement('div', { className: 'p-6 max-w-[1600px] mx-auto grid lg:grid-cols-12 gap-6 h-full pb-20' },
+            React.createElement('div', { className: 'lg:col-span-9 flex flex-col h-full' },
+              React.createElement('div', { className: 'flex justify-between items-center mb-4' },
+                  React.createElement('input', { placeholder: 'Search...', value: searchTerm, onChange: e => setSearchTerm(e.target.value), className: 'p-3 border border-slate-200 rounded-full w-80 text-sm px-5 outline-none' }),
+                  React.createElement('button', { onClick: () => queue.filter(p=>p.status==='finished').forEach(p=>qRef.doc(p.id).delete()), className: 'bg-red-50 text-red-600 px-4 py-2 rounded-full text-[10px] font-bold' }, 'CLEAR ALL FINISHED')
+              ),
+              React.createElement('div', { className: 'bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full' },
+                React.createElement('div', { className: 'p-4 bg-slate-900 text-white font-bold uppercase text-[10px] grid grid-cols-12' }, 
+                  React.createElement('span', { className: 'col-span-1' }, 'QUEUE'), React.createElement('span', { className: 'col-span-3' }, 'PATIENT NAME'), React.createElement('span', { className: 'col-span-2 text-center' }, 'LOCATION'), React.createElement('span', { className: 'col-span-6 text-right' }, 'ACTIONS')
+                ),
+                React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
+                  filteredQueue.filter(p => p.status !== 'finished').map(p => React.createElement('div', { key: p.id, className: `p-4 border-b border-slate-100 grid grid-cols-12 items-center transition-all ${['ready_for_dispensary'].includes(p.status) ? 'patient-card-inactive' : ''}` },
+                    React.createElement('div', { className: 'col-span-1 text-3xl font-black' }, `#${p.num}`),
+                    React.createElement('div', { className: 'col-span-3 px-2 overflow-hidden' }, React.createElement('div', { className: 'text-[13px] font-bold text-blue-700 uppercase truncate' }, p.name), React.createElement('div', { className: 'log-entry' }, p.logs?.slice(-1))),
+                    React.createElement('div', { className: `col-span-2 text-center text-[10px] font-black uppercase ${p.loc.includes('NOT') ? 'text-red-600' : 'text-slate-400'}` }, p.loc),
+                    React.createElement('div', { className: 'col-span-6 flex gap-1 justify-end' },
+                      React.createElement('button', { onClick: () => updatePatient(p.id, 'calling', 'Room 1', p, true), className: 'bg-slate-800 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold hover:bg-black transition-colors' }, 'CALL R1'),
+                      React.createElement('button', { onClick: () => updatePatient(p.id, 'calling', 'Room 2', p, true), className: 'bg-slate-800 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold hover:bg-black transition-colors' }, 'CALL R2'),
+                      React.createElement('button', { onClick: () => updatePatient(p.id, 'in room', p.loc, p), className: 'bg-blue-600 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold' }, 'IN ROOM'),
+                      React.createElement('button', { onClick: () => updatePatient(p.id, 'not appeared', 'NOT APPEARED', p), className: 'bg-red-500 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold' }, 'MISSING'),
+                      React.createElement('button', { onClick: () => updatePatient(p.id, 'ready_for_dispensary', 'Dispensary', p), className: 'bg-emerald-600 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold' }, 'TO DISP'),
+                      React.createElement('button', { onClick: () => qRef.doc(p.id).delete(), className: 'text-slate-300 ml-2 hover:text-red-500' }, '✕')
+                    )
+                  ))
+                )
+              )
             ),
-            React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
-              React.createElement('div', { className: 'p-3 bg-slate-900 text-white font-bold uppercase text-[10px] flex' }, 
-                React.createElement('span', { className: 'w-20' }, 'QUEUE'), React.createElement('span', { className: 'flex-1' }, 'DETAILS'), React.createElement('span', { className: 'w-32' }, 'LOCATION'), React.createElement('span', { className: 'w-72 text-right' }, 'ACTIONS')
-              ),
-              React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
-                filteredQueue.map(p => React.createElement('div', { key: p.id, className: `p-5 border-b flex items-center justify-between transition-all ${['finished', 'ready_for_dispensary'].includes(p.status) ? 'patient-card-inactive' : ''}` },
-                  React.createElement('div', { className: 'w-20 text-3xl font-black' }, `#${p.num}`),
-                  React.createElement('div', { className: 'flex-1 pr-4' }, React.createElement('div', { className: 'text-xs font-bold text-blue-600 uppercase' }, p.name), React.createElement('div', { className: 'space-y-0.5' }, p.logs?.slice(-2).map((l,i)=>React.createElement('div',{key:i,className:'log-entry'},`• ${l}`)))),
-                  React.createElement('div', { className: `w-32 text-[10px] font-black uppercase ${p.loc.includes('NOT') ? 'text-red-600' : 'text-slate-400'}` }, p.loc),
-                  React.createElement('div', { className: 'flex gap-1 justify-end' },
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'calling', 'Room 1', p, true), className: 'bg-slate-800 text-white px-2 py-1.5 rounded-lg text-[9px] font-bold' }, 'CALL R1'),
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'calling', 'Room 2', p, true), className: 'bg-slate-800 text-white px-2 py-1.5 rounded-lg text-[9px] font-bold' }, 'CALL R2'),
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'in room', p.loc, p), className: 'bg-blue-600 text-white px-2 py-1.5 rounded-lg text-[9px] font-bold' }, 'IN ROOM'),
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'not appeared', 'NOT APPEARED', p), className: 'bg-red-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-bold' }, 'MISSING'),
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'ready_for_dispensary', 'Dispensary', p), className: 'bg-emerald-600 text-white px-2 py-1.5 rounded-lg text-[9px] font-bold' }, 'TO DISP'),
-                    React.createElement('button', { onClick: () => qRef.doc(p.id).delete(), className: 'text-slate-200 ml-1' }, '✕')
-                  )
-                ))
-              )
-            )
+            React.createElement('div', { className: 'lg:col-span-3 h-[calc(100vh-160px)]' }, React.createElement(SidebarMonitor))
           ),
 
-          view === 'dispensary' && React.createElement('div', { className: 'p-6 max-w-7xl mx-auto flex flex-col h-[calc(100vh-100px)]' },
-            React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
-              React.createElement('div', { className: 'p-3 bg-emerald-900 text-white font-bold uppercase text-[10px] flex' },
-                React.createElement('span', { className: 'w-20' }, 'QUEUE'), React.createElement('span', { className: 'flex-1' }, 'DETAILS'), React.createElement('span', { className: 'w-32' }, 'LOCATION'), React.createElement('span', { className: 'w-64 text-right' }, 'ACTIONS')
-              ),
-              React.createElement('div', { className: 'overflow-y-auto flex-1' },
-                filteredQueue.filter(p => ['ready_for_dispensary', 'collecting', 'finished'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: `p-4 border-b flex items-center justify-between ${p.status === 'finished' ? 'opacity-40 grayscale' : ''}` },
-                  React.createElement('div', { className: 'w-20 text-3xl font-black text-emerald-900' }, `#${p.num}`),
-                  React.createElement('div', { className: 'flex-1 pr-4' }, React.createElement('div', { className: 'text-xs font-bold text-emerald-600 uppercase' }, p.name), React.createElement('div', { className:'log-entry'}, p.logs?.slice(-1))),
-                  React.createElement('div', { className: `w-32 text-[10px] font-black uppercase ${p.loc.includes('NOT') ? 'text-red-600' : 'text-slate-400'}` }, p.loc),
-                  React.createElement('div', { className: 'flex gap-1' },
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'collecting', 'Dispensary', p, true), className: 'bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[9px] font-bold' }, 'CALL'),
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'not appeared', 'NOT APPEARED (DISP)', p), className: 'bg-red-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-bold' }, 'MISSING'),
-                    React.createElement('button', { onClick: () => updatePatient(p.id, 'finished', 'Clinic', p), className: 'bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[9px] font-bold' }, 'DONE'),
-                    React.createElement('button', { onClick: () => qRef.doc(p.id).delete(), className: 'text-slate-300' }, '✕')
-                  )
-                ))
+          view === 'dispensary' && React.createElement('div', { className: 'p-6 max-w-[1600px] mx-auto grid lg:grid-cols-12 gap-6 h-full pb-20' },
+            React.createElement('div', { className: 'lg:col-span-9 flex flex-col h-full' },
+              React.createElement('div', { className: 'bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full' },
+                React.createElement('div', { className: 'p-4 bg-emerald-900 text-white font-bold uppercase text-[10px] grid grid-cols-12' },
+                  React.createElement('span', { className: 'col-span-1' }, 'QUEUE'), React.createElement('span', { className: 'col-span-4' }, 'PATIENT DETAILS'), React.createElement('span', { className: 'col-span-2 text-center' }, 'LOCATION'), React.createElement('span', { className: 'col-span-5 text-right pr-4' }, 'ACTIONS')
+                ),
+                React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
+                  sortedQueue.filter(p => ['ready_for_dispensary', 'collecting', 'finished'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: `p-5 border-b border-slate-100 flex items-center justify-between ${p.status === 'finished' ? 'opacity-40 grayscale bg-slate-50' : ''}` },
+                    React.createElement('div', { className: 'w-16 text-3xl font-black text-emerald-900' }, `#${p.num}`),
+                    React.createElement('div', { className: 'flex-1 px-4' }, React.createElement('div', { className: 'text-[13px] font-bold text-emerald-700 uppercase' }, p.name), React.createElement('div', { className:'log-entry'}, p.logs?.slice(-1))),
+                    React.createElement('div', { className: `w-32 text-center text-[10px] font-black uppercase ${p.loc.includes('NOT') ? 'text-red-600' : 'text-slate-400'}` }, p.loc),
+                    React.createElement('div', { className: 'flex gap-2 justify-end' },
+                      React.createElement('button', { onClick: () => updatePatient(p.id, 'collecting', 'Dispensary', p, true), className: 'bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-all' }, 'CALL TO COUNTER'),
+                      React.createElement('button', { onClick: () => updatePatient(p.id, 'finished', 'Clinic', p), className: 'bg-slate-800 text-white px-6 py-2.5 rounded-xl text-[10px] font-bold hover:bg-black transition-all' }, 'DONE'),
+                      React.createElement('button', { onClick: () => qRef.doc(p.id).delete(), className: 'text-slate-300 ml-4 hover:text-red-500' }, '✕')
+                    )
+                  ))
+                )
               )
-            )
+            ),
+            React.createElement('div', { className: 'lg:col-span-3 h-[calc(100vh-120px)]' }, React.createElement(SidebarMonitor))
           ),
 
-          view === 'tv' && React.createElement('div', { className: 'flex flex-col h-[calc(100vh-60px)]' },
-            React.createElement('div', { className: 'message-bar uppercase tracking-wide' }, branchNames[branchKey] + ': PLEASE WAIT FOR YOUR TURN.'),
-            React.createElement('div', { className: 'tv-dark flex-1 flex text-white' },
-              React.createElement('div', { className: 'flex-[1.5] flex flex-col items-center justify-center relative' },
-                React.createElement('div', { className: 'text-blue-400 text-3xl font-black mb-5 tracking-[0.3em] uppercase' }, 'Now Calling'),
-                React.createElement('div', { className: `text-[25rem] font-black leading-none mb-5 ${flash ? 'animate-call-flash' : ''}` }, activeCall?.num || '----'),
-                React.createElement('div', { className: 'text-7xl font-medium text-emerald-400 uppercase tracking-wide' }, activeCall?.loc || 'Please Wait'),
-                !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/95 flex items-center justify-center z-20' }, 
-                  React.createElement('button', { onClick: () => { initAudio(); setAudioOn(true); }, className: 'px-12 py-6 bg-blue-700 text-white rounded-full font-black text-2xl shadow-2xl transition-transform hover:scale-105' }, 'ACTIVATE SYSTEM AUDIO')
+          view === 'tv' && React.createElement('div', { className: 'flex flex-col h-[calc(100vh-65px)] overflow-hidden' },
+            React.createElement('div', { className: 'message-bar uppercase tracking-[0.2em]' }, branchNames[branchKey].toUpperCase() + ': PLEASE WAIT FOR YOUR TURN.'),
+            React.createElement('div', { className: 'tv-dark flex-1 flex p-8 gap-8 text-white' },
+              React.createElement('div', { className: 'flex-[1.6] bg-white/5 border border-white/10 rounded-[60px] flex flex-col items-center justify-center relative shadow-2xl overflow-hidden' },
+                React.createElement('div', { className: 'text-blue-400 text-4xl font-black mb-8 tracking-[0.6em] uppercase opacity-60' }, 'Now Calling'),
+                // Number size adjusted and overflow handled for animation safety
+                React.createElement('div', { className: 'relative w-full flex items-center justify-center' },
+                    React.createElement('div', { className: `text-[28rem] font-black leading-none mb-10 ${flash ? 'animate-call-flash' : 'text-white'}` }, activeCall?.num || '----')
+                ),
+                React.createElement('div', { className: 'text-[8.5rem] font-bold text-emerald-400 uppercase tracking-[0.1em]' }, activeCall?.loc || 'Standby'),
+                !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/98 flex flex-col items-center justify-center z-50 rounded-[60px]' }, 
+                  React.createElement('button', { onClick: () => { initAudio(); setAudioOn(true); }, className: 'px-20 py-10 bg-blue-700 text-white rounded-full font-black text-4xl shadow-2xl transition-transform hover:scale-105 active:scale-95' }, 'ACTIVATE HUB AUDIO')
                 )
               ),
-              React.createElement('div', { className: 'flex-1 p-8 h-full overflow-hidden flex flex-col gap-4' }, 
-                React.createElement('div', { className: 'bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-3xl flex flex-col items-center justify-center' },
-                  React.createElement('div', { className: 'tv-clock text-6xl text-blue-300' }, currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })),
-                  React.createElement('div', { className: 'text-xs font-bold text-white/50 mt-1 uppercase' }, currentTime.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long' }))
-                ),
-                React.createElement('div', { className: 'flex-1 min-h-0' }, React.createElement(SidebarMonitor, { isDark: true }))
+              React.createElement('div', { className: 'flex-1 flex flex-col h-full gap-4' },
+                  React.createElement('div', { className: 'bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-[45px] flex flex-col items-center justify-center shadow-xl' },
+                      React.createElement('div', { className: 'tv-clock text-7xl text-blue-300 mb-1' }, currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })),
+                      React.createElement('div', { className: 'text-xl font-black text-white/50 tracking-[0.2em] uppercase' }, currentTime.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short' }))
+                  ),
+                  React.createElement('div', { className: 'flex-1 bg-white/5 border border-white/10 rounded-[45px] overflow-hidden flex flex-col' },
+                      React.createElement('div', { className: 'p-4 border-b border-white/10 text-white/30 text-[11px] font-black uppercase tracking-[0.4em] text-center' }, 'Live Terminal Monitor'),
+                      React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
+                          queue.map(p => React.createElement('div', { key: p.id, className: 'p-7 border-b border-white/5 flex justify-between items-center' },
+                              React.createElement('div', null,
+                                  React.createElement('span', { className: 'text-6xl font-black text-white' }, `#${p.num}`),
+                                  React.createElement('div', { className: `text-xl font-bold uppercase mt-1.5 ${p.loc.includes('NOT') ? 'text-red-400' : 'text-white/30'}` }, p.loc)
+                              ),
+                              React.createElement('span', { className: `tv-status-pill ${p.status.includes('not') ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}` }, p.status)
+                          ))
+                      )
+                  )
               )
             )
           )
