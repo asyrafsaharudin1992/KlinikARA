@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SwiftQueue Pro – TV Safe</title>
+<title>SwiftQueue Pro – Samsung TV Safe</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -27,6 +27,9 @@ body{font-family:Inter,sans-serif;background:#f1f5f9;margin:0;height:100vh;overf
 .big-num{font-size:16vw;font-weight:900}
 .animate-flash{animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{color:#60a5fa}50%{color:#fff}}
+.audio-badge{position:fixed;bottom:12px;right:12px;font-size:10px;padding:6px 10px;border-radius:999px;font-weight:900}
+.locked{background:#991b1b;color:white}
+.unlocked{background:#065f46;color:white}
 </style>
 </head>
 
@@ -43,16 +46,25 @@ firebase.initializeApp({
 firebase.auth().signInAnonymously();
 const db = firebase.firestore();
 
-/* ---------------- HELPERS ---------------- */
+/* ---------------- AUDIO SYSTEM ---------------- */
 const isTizen = () => navigator.userAgent.toLowerCase().includes("tizen");
-const audioQueue = [];
-let playing = false;
+let audioUnlocked = false;
 
-const playSequence = async (files) => {
+const unlockAudio = () => {
+  if (audioUnlocked) return;
+  const a = new Audio("/audio/silence.mp3");
+  a.volume = 0.01;
+  a.play()
+    .then(() => audioUnlocked = true)
+    .catch(() => console.log("Audio unlock failed"));
+};
+
+const playFilesSequentially = async (files) => {
+  if (!audioUnlocked) return;
   for (const src of files) {
     await new Promise(res => {
       const a = new Audio(src);
-      a.volume = 0.9;
+      a.volume = 1.0;
       a.onended = res;
       a.onerror = res;
       a.play().catch(res);
@@ -61,24 +73,25 @@ const playSequence = async (files) => {
 };
 
 const speakAirportStyle = async (num, loc, status) => {
+  if (!audioUnlocked) return;
   const n = String(num).padStart(3,"0");
 
-  // Always chime
-  await playSequence(["/audio/chime.mp3"]);
-
   if (isTizen()) {
-    const files = [
+    await playFilesSequentially([
+      "/audio/chime.mp3",
       "/audio/attention.mp3",
       `/audio/number_${n}.mp3`,
       status === "collecting"
         ? "/audio/proceed_to_medication.mp3"
         : `/audio/proceed_to_${loc.replace(" ","_").toLowerCase()}.mp3`
-    ];
-    playSequence(files);
+    ]);
     return;
   }
 
-  // Normal browser TTS
+  // Desktop / tablet
+  const chime = new Audio("/audio/chime.mp3");
+  await chime.play();
+
   const msg = new SpeechSynthesisUtterance(
     status === "collecting"
       ? `Attention number ${num}. Please proceed to medication counter.`
@@ -125,6 +138,10 @@ function App(){
 
   return React.createElement("div",{className:`app-container ${view==="tv"?"tv-mode":""}`},
 
+    React.createElement("div",{className:`audio-badge ${audioUnlocked?"unlocked":"locked"}`},
+      audioUnlocked ? "AUDIO READY" : "AUDIO LOCKED"
+    ),
+
     view!=="tv" && React.createElement("div",{className:"nav-bar"},
       React.createElement("h1",{className:"font-black text-blue-900"},"Klinik Ara 24 Jam"),
       React.createElement("div",{className:"flex gap-1"},
@@ -144,8 +161,11 @@ function App(){
     view==="tv"
       ? React.createElement("div",{className:"tv-grid"},
           React.createElement("div",{className:"flex flex-col items-center justify-center"},
-            !audioOn && React.createElement("button",{onClick:()=>setAudioOn(true),
-              className:"mb-6 px-12 py-6 bg-blue-600 rounded-full text-white text-2xl font-black"},
+            !audioOn && React.createElement("button",{onClick:()=>{
+              unlockAudio();
+              setAudioOn(true);
+            },
+            className:"mb-6 px-12 py-6 bg-blue-600 rounded-full text-white text-2xl font-black"},
               "START SYSTEM"
             ),
             React.createElement("div",{className:"text-4xl uppercase"},"Now Calling"),
