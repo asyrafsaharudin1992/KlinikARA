@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SwiftQueue Pro - Precision Edition</title>
+  <title>SwiftQueue Pro - TV Optimized</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -50,49 +50,19 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let audioCtx = null, masterGain = null, reverbNode = null, noiseGain = null;
-
-    const initAudio = async () => { 
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterGain = audioCtx.createGain();
-            reverbNode = audioCtx.createConvolver();
-            const length = audioCtx.sampleRate * 4; 
-            const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
-            for (let i = 0; i < 2; i++) {
-                const channel = impulse.getChannelData(i);
-                for (let j = 0; j < length; j++) {
-                    channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 3.5);
-                }
-            }
-            reverbNode.buffer = impulse;
-            noiseGain = audioCtx.createGain(); noiseGain.gain.value = 0.02;
-            const whiteNoise = audioCtx.createBufferSource();
-            const bufferSize = 2 * audioCtx.sampleRate, noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), out = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) { out[i] = Math.random() * 2 - 1; }
-            whiteNoise.buffer = noiseBuffer; whiteNoise.loop = true;
-            const noiseFilter = audioCtx.createBiquadFilter(); noiseFilter.type = 'lowpass'; noiseFilter.frequency.value = 350;
-            whiteNoise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
-            whiteNoise.start();
-            masterGain.connect(reverbNode); reverbNode.connect(audioCtx.destination); masterGain.connect(audioCtx.destination);
-        }
-        if (audioCtx.state === 'suspended') audioCtx.resume(); 
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+    // --- TV-STABLE AUDIO FUNCTIONS ---
+    const playVoice = (text) => {
+      // Using a reliable Google TTS proxy for MP3 streaming
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=en&client=tw-ob`;
+      const audio = new Audio(url);
+      audio.play().catch(e => console.error("Voice Playback Error:", e));
     };
-    
-    const playChime = (type = 'start') => {
-        initAudio(); const now = audioCtx.currentTime;
-        const playTone = (freq, start, duration) => {
-            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            osc.type = 'sine'; osc.frequency.setValueAtTime(freq, start);
-            g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(0.15, start + 0.1); g.gain.exponentialRampToValueAtTime(0.001, start + duration);
-            osc.connect(g); g.connect(masterGain); osc.start(start); osc.stop(start + duration);
-        };
-        if (type === 'start') {
-            playTone(554.37, now, 1.8); playTone(440.00, now + 0.5, 1.8); playTone(554.37, now + 1.0, 2.0);
-        } else {
-            playTone(440.00, now, 1.2); playTone(349.23, now + 0.4, 1.5);
-        }
+
+    const playChime = () => {
+      // Clear sounding chime from a reliable source
+      const chime = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      chime.volume = 0.6;
+      chime.play().catch(e => console.error("Chime Error:", e));
     };
 
     function App() {
@@ -132,20 +102,24 @@
         p.num.toString().includes(searchTerm) || p.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
+      // --- AUTOMATIC CALL TRIGGER ---
       React.useEffect(() => {
         if (view === 'tv' && audioOn && activeCall) {
           if (activeCall.callTrigger > lastTrigger.current) {
             lastTrigger.current = activeCall.callTrigger;
-            setFlash(true); playChime('start');
-            if(noiseGain) noiseGain.gain.setTargetAtTime(0.005, audioCtx.currentTime, 0.5);
+            setFlash(true);
+            
+            // 1. Play Entrance Chime
+            playChime();
+            
+            // 2. Play Voice after a 1.5s delay to let chime finish
             setTimeout(() => {
-                window.speechSynthesis.cancel();
                 const msg = `Attention please. Patient number ${activeCall.num}. Please proceed to ${activeCall.loc}.`;
-                const utterance = new SpeechSynthesisUtterance(`${msg} ... I repeat ... ${msg}`);
-                utterance.lang = 'en-GB'; utterance.rate = 0.8; utterance.pitch = 1.0;
-                utterance.onend = () => { playChime('end'); if(noiseGain) noiseGain.gain.setTargetAtTime(0.02, audioCtx.currentTime + 1, 0.5); setTimeout(() => setFlash(false), 2000); };
-                window.currentUtterance = utterance; window.speechSynthesis.speak(utterance);
-            }, 3800); 
+                playVoice(msg);
+                
+                // Keep flash active during speech, then fade
+                setTimeout(() => setFlash(false), 7000);
+            }, 1500);
           }
         }
       }, [activeCall, view, audioOn]);
@@ -259,14 +233,21 @@
             React.createElement('div', { className: 'message-bar uppercase tracking-[0.2em]' }, branchNames[branchKey].toUpperCase() + ': PLEASE WAIT FOR YOUR TURN.'),
             React.createElement('div', { className: 'tv-dark flex-1 flex p-8 gap-8 text-white' },
               React.createElement('div', { className: 'flex-[1.6] bg-white/5 border border-white/10 rounded-[60px] flex flex-col items-center justify-center relative shadow-2xl overflow-hidden' },
+                
+                // --- TEST SOUND BUTTON (HIDDEN IN CORNER) ---
+                React.createElement('button', { 
+                    onClick: () => playVoice("Testing sound system"), 
+                    className: 'absolute top-10 right-10 p-4 bg-white/10 rounded-full text-[10px] opacity-20 hover:opacity-100' 
+                }, 'TEST SOUND'),
+
                 React.createElement('div', { className: 'text-blue-400 text-4xl font-black mb-8 tracking-[0.6em] uppercase opacity-60' }, 'Now Calling'),
-                // Number size adjusted and overflow handled for animation safety
                 React.createElement('div', { className: 'relative w-full flex items-center justify-center' },
                     React.createElement('div', { className: `text-[28rem] font-black leading-none mb-10 ${flash ? 'animate-call-flash' : 'text-white'}` }, activeCall?.num || '----')
                 ),
                 React.createElement('div', { className: 'text-[8.5rem] font-bold text-emerald-400 uppercase tracking-[0.1em]' }, activeCall?.loc || 'Standby'),
+                
                 !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/98 flex flex-col items-center justify-center z-50 rounded-[60px]' }, 
-                  React.createElement('button', { onClick: () => { initAudio(); setAudioOn(true); }, className: 'px-20 py-10 bg-blue-700 text-white rounded-full font-black text-4xl shadow-2xl transition-transform hover:scale-105 active:scale-95' }, 'ACTIVATE HUB AUDIO')
+                  React.createElement('button', { onClick: () => { setAudioOn(true); playVoice("Audio system activated"); }, className: 'px-20 py-10 bg-blue-700 text-white rounded-full font-black text-4xl shadow-2xl' }, 'ACTIVATE HUB AUDIO')
                 )
               ),
               React.createElement('div', { className: 'flex-1 flex flex-col h-full gap-4' },
