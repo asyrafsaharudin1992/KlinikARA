@@ -17,6 +17,11 @@
     .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
     
     .nav-bar { background: white; border-bottom: 2px solid #e2e8f0; height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; z-index: 1000; }
+    
+    /* Slim Nav for TV to maximize space */
+    .tv-nav { background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid rgba(255,255,255,0.1); height: 50px; }
+    .tv-nav .nav-btn-inactive { color: rgba(255,255,255,0.5); }
+    
     .ticker-bar { background: #000; color: #fbbf24; height: 45px; display: flex; align-items: center; overflow: hidden; font-size: 1.2rem; font-weight: 800; border-bottom: 3px solid #1e293b; }
     .ticker-move { white-space: nowrap; animation: marquee 40s linear infinite; display: inline-block; padding-left: 100%; }
     @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
@@ -55,7 +60,6 @@
       const [now, setNow] = React.useState(new Date());
       const lastCallId = React.useRef(null);
 
-      // Listen to specific branch collection
       React.useEffect(() => {
         localStorage.setItem('clinic_branch', branch);
         const unsub = db.collection("branches").doc(branch).collection("queue")
@@ -84,12 +88,6 @@
 
       const qRef = db.collection("branches").doc(branch).collection("queue");
 
-      const add = () => {
-        if (!inputNum) return;
-        qRef.add({ num: parseInt(inputNum), name: inputName || '', status: 'waiting', loc: 'Waiting Area', time: Date.now(), sortOrder: 1 });
-        setInputNum(''); setInputName('');
-      };
-
       const up = (id, s, l) => qRef.doc(id).update({ status: s, loc: l, time: Date.now(), sortOrder: s === 'finished' ? 0 : 1 });
       const del = (id) => { if(confirm("Remove patient?")) qRef.doc(id).delete(); };
       const resetAll = () => { if(confirm(`Reset ALL data for ${branch}?`)) qRef.get().then(s => s.forEach(d => d.ref.delete())); };
@@ -112,20 +110,26 @@
       );
 
       return React.createElement('div', { className: `app-container ${view === 'tv' ? 'tv-dark' : ''}` },
-        React.createElement('nav', { className: `nav-bar ${view === 'tv' ? 'hidden' : ''}` },
-          React.createElement('div', { className: 'flex gap-6 items-center' },
-            React.createElement('div', { className: 'flex flex-col' },
+        
+        // --- NAVIGATION BAR (FIXED FOR TV) ---
+        React.createElement('nav', { className: `${view === 'tv' ? 'tv-nav' : 'nav-bar'} transition-all` },
+          React.createElement('div', { className: 'flex gap-6 items-center px-6' },
+            React.createElement('div', { className: `flex flex-col ${view === 'tv' ? 'hidden' : ''}` },
               React.createElement('span', { className: 'clinic-header text-xl' }, 'KLINIK ARA 24 JAM'),
               React.createElement('span', { className: 'text-[9px] font-bold text-slate-400 uppercase tracking-widest' }, branch + ' Branch')
             ),
             React.createElement('select', { 
               value: branch, 
               onChange: (e) => setBranch(e.target.value),
-              className: 'bg-slate-100 border-none rounded-lg p-2 text-[10px] font-black uppercase cursor-pointer outline-none focus:ring-2 focus:ring-blue-500'
-            }, ['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => React.createElement('option', {key: b, value: b}, b)))
+              className: `${view === 'tv' ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'} border-none rounded-lg p-1 text-[10px] font-black uppercase outline-none`
+            }, ['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => React.createElement('option', {key: b, value: b, style:{color:'black'}}, b)))
           ),
-          React.createElement('div', { className: 'flex gap-1 bg-slate-100 p-1 rounded-xl' },
-            ['reg', 'doc', 'pharmacy', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `px-4 py-2 rounded-lg text-[10px] font-black transition-all ${view === v ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}` }, v.toUpperCase()))
+          React.createElement('div', { className: 'flex gap-1 p-1 rounded-xl' },
+            ['reg', 'doc', 'pharmacy', 'tv'].map(v => React.createElement('button', { 
+              key: v, 
+              onClick: () => setView(v), 
+              className: `px-4 py-1 rounded-lg text-[10px] font-black transition-all ${view === v ? 'bg-blue-600 text-white shadow-sm' : (view === 'tv' ? 'text-white/40 hover:text-white' : 'text-slate-500 hover:bg-slate-200')}` 
+            }, v.toUpperCase()))
           )
         ),
 
@@ -136,8 +140,7 @@
         view === 'tv' ? 
           React.createElement('div', { className: 'tv-grid' },
             React.createElement('div', { className: 'flex flex-col items-center justify-center relative bg-white/5 rounded-[40px] border border-white/10' },
-              !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center rounded-[40px]' },
-                React.createElement('h2', { className: 'text-blue-400 font-bold mb-4 uppercase tracking-widest' }, branch + ' Branch'),
+              !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/95 z-50 flex flex-col items-center justify-center rounded-[40px]' },
                 React.createElement('button', { onClick: () => setAudioOn(true), className: 'px-12 py-6 bg-blue-600 text-white rounded-full font-black text-2xl shadow-2xl' }, 'ACTIVATE SYSTEM')
               ),
               React.createElement('span', { className: 'text-blue-400 text-4xl font-black uppercase tracking-[0.3em] mb-4' }, 'Now Calling'),
@@ -159,9 +162,13 @@
               view === 'reg' && React.createElement('div', { className: 'p-10' },
                 React.createElement('h2', { className: 'font-black text-slate-400 uppercase text-xs mb-8' }, 'Registration - ' + branch),
                 React.createElement('input', { placeholder: 'Patient Name', value: inputName, onChange: e => setInputName(e.target.value), className: 'w-full mb-4 p-4 border-2 rounded-2xl text-lg font-bold outline-none' }),
-                React.createElement('input', { type: 'number', placeholder: 'Queue Number', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-6 border-2 rounded-3xl text-5xl font-black text-center outline-none' }),
-                React.createElement('button', { onClick: add, className: 'w-full py-6 bg-blue-700 text-white rounded-3xl font-black text-xl' }, 'REGISTER PATIENT'),
-                React.createElement('button', { onClick: resetAll, className: 'w-full mt-20 text-slate-300 text-[10px] font-bold hover:text-red-500 uppercase transition-colors' }, 'Reset ' + branch + ' Data')
+                React.createElement('input', { type: 'number', placeholder: 'Queue Number', value: inputNum, onChange: (e) => setInputNum(e.target.value), className: 'w-full mb-6 p-6 border-2 rounded-3xl text-5xl font-black text-center outline-none' }),
+                React.createElement('button', { onClick: () => {
+                  if (!inputNum) return;
+                  qRef.add({ num: parseInt(inputNum), name: inputName || '', status: 'waiting', loc: 'Waiting Area', time: Date.now(), sortOrder: 1 });
+                  setInputNum(''); setInputName('');
+                }, className: 'w-full py-6 bg-blue-700 text-white rounded-3xl font-black text-xl' }, 'REGISTER PATIENT'),
+                React.createElement('button', { onClick: resetAll, className: 'w-full mt-20 text-slate-300 text-[10px] font-bold hover:text-red-500 uppercase' }, 'Reset Data')
               ),
 
               (view === 'doc' || view === 'pharmacy') && React.createElement(React.Fragment, null,
