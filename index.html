@@ -1,212 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SwiftQueue Pro – Samsung TV Safe</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-
-<style>
-body{font-family:Inter,sans-serif;background:#f1f5f9;margin:0;height:100vh;overflow:hidden}
-.tv-mode{background:#0f172a;color:#fff}
-.app-container{display:flex;flex-direction:column;height:100vh;width:100vw}
-.nav-bar{background:#fff;border-bottom:1px solid #e2e8f0;height:65px;display:flex;align-items:center;justify-content:space-between;padding:0 25px}
-.ticker-bar{background:#000;color:#fbbf24;height:45px;display:flex;align-items:center;overflow:hidden;font-weight:900}
-.ticker-move{white-space:nowrap;animation:marquee 40s linear infinite;padding-left:100%}
-@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
-.admin-layout{display:grid;grid-template-columns:1fr 380px;flex:1;gap:20px;padding:20px}
-.tv-grid{display:grid;grid-template-columns:1.6fr 1fr;height:calc(100vh - 110px);gap:20px;padding:20px}
-.big-num{font-size:16vw;font-weight:900}
-.animate-flash{animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{color:#60a5fa}50%{color:#fff}}
-.audio-badge{position:fixed;bottom:12px;right:12px;font-size:10px;padding:6px 10px;border-radius:999px;font-weight:900}
-.locked{background:#991b1b;color:white}
-.unlocked{background:#065f46;color:white}
-</style>
+  <meta charset="utf-8">
+  <title>Samsung TV Audio Test</title>
 </head>
+<body style="background:black;color:white;font-size:40px;text-align:center">
 
-<body>
-<div id="root"></div>
+<h1>Samsung TV Audio Test</h1>
+
+<button id="btn" style="font-size:40px;padding:40px">
+  CLICK TO PLAY SOUND
+</button>
 
 <script>
-/* ---------------- FIREBASE ---------------- */
-firebase.initializeApp({
-  apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
-  authDomain: "clinicqueue-d9d3a.firebaseapp.com",
-  projectId: "clinicqueue-d9d3a"
-});
-firebase.auth().signInAnonymously();
-const db = firebase.firestore();
-
-/* ---------------- AUDIO SYSTEM ---------------- */
-const isTizen = () => navigator.userAgent.toLowerCase().includes("tizen");
-let audioUnlocked = false;
-
-const unlockAudio = () => {
-  if (audioUnlocked) return;
-  const a = new Audio("/audio/silence.mp3");
-  a.volume = 0.01;
+document.getElementById("btn").onclick = function () {
+  const a = document.createElement("audio");
+  a.src = "https://www.soundjay.com/buttons/sounds/button-3.mp3";
+  a.volume = 1.0;
   a.play()
-    .then(() => audioUnlocked = true)
-    .catch(() => console.log("Audio unlock failed"));
+    .then(() => alert("PLAY CALLED"))
+    .catch(e => alert("ERROR: " + e));
 };
-
-const playFilesSequentially = async (files) => {
-  if (!audioUnlocked) return;
-  for (const src of files) {
-    await new Promise(res => {
-      const a = new Audio(src);
-      a.volume = 1.0;
-      a.onended = res;
-      a.onerror = res;
-      a.play().catch(res);
-    });
-  }
-};
-
-const speakAirportStyle = async (num, loc, status) => {
-  if (!audioUnlocked) return;
-  const n = String(num).padStart(3,"0");
-
-  if (isTizen()) {
-    await playFilesSequentially([
-      "/audio/chime.mp3",
-      "/audio/attention.mp3",
-      `/audio/number_${n}.mp3`,
-      status === "collecting"
-        ? "/audio/proceed_to_medication.mp3"
-        : `/audio/proceed_to_${loc.replace(" ","_").toLowerCase()}.mp3`
-    ]);
-    return;
-  }
-
-  // Desktop / tablet
-  const chime = new Audio("/audio/chime.mp3");
-  await chime.play();
-
-  const msg = new SpeechSynthesisUtterance(
-    status === "collecting"
-      ? `Attention number ${num}. Please proceed to medication counter.`
-      : `Attention please. Number ${num}. Please proceed to ${loc}.`
-  );
-  msg.rate = 0.82;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(msg);
-};
-
-/* ---------------- APP ---------------- */
-function App(){
-  const [view,setView]=React.useState("reg");
-  const [branch,setBranch]=React.useState(localStorage.getItem("branch")||"B1");
-  const [queue,setQueue]=React.useState([]);
-  const [audioOn,setAudioOn]=React.useState(false);
-  const lastCall=React.useRef(null);
-
-  React.useEffect(()=>{
-    localStorage.setItem("branch",branch);
-    return db.collection("queue").doc(branch)
-      .collection("patients")
-      .orderBy("time","desc")
-      .onSnapshot(s=>setQueue(s.docs.map(d=>({id:d.id,...d.data()}))));
-  },[branch]);
-
-  const active = React.useMemo(()=>(
-    queue.filter(p=>["calling","collecting"].includes(p.status))
-         .sort((a,b)=>(b.callTrigger||0)-(a.callTrigger||0))[0]
-  ),[queue]);
-
-  React.useEffect(()=>{
-    if(view==="tv"&&audioOn&&active){
-      const id=`${active.id}-${active.callTrigger}`;
-      if(id!==lastCall.current){
-        lastCall.current=id;
-        speakAirportStyle(active.num,active.loc,active.status);
-      }
-    }
-  },[active,audioOn,view]);
-
-  const update=(id,data)=>db.collection("queue").doc(branch)
-    .collection("patients").doc(id).update(data);
-
-  return React.createElement("div",{className:`app-container ${view==="tv"?"tv-mode":""}`},
-
-    React.createElement("div",{className:`audio-badge ${audioUnlocked?"unlocked":"locked"}`},
-      audioUnlocked ? "AUDIO READY" : "AUDIO LOCKED"
-    ),
-
-    view!=="tv" && React.createElement("div",{className:"nav-bar"},
-      React.createElement("h1",{className:"font-black text-blue-900"},"Klinik Ara 24 Jam"),
-      React.createElement("div",{className:"flex gap-1"},
-        ["reg","doc","pharmacy","tv"].map(v=>
-          React.createElement("button",{key:v,onClick:()=>setView(v),
-            className:`px-4 py-2 rounded ${view===v?"bg-blue-600 text-white":"bg-slate-200"}`},v.toUpperCase())
-        )
-      )
-    ),
-
-    React.createElement("div",{className:"ticker-bar"},
-      React.createElement("div",{className:"ticker-move"},
-        "SELAMAT DATANG KE KLINIK ARA 24 JAM • SILA TUNGGU NOMBOR ANDA DIPANGGIL • "
-      )
-    ),
-
-    view==="tv"
-      ? React.createElement("div",{className:"tv-grid"},
-          React.createElement("div",{className:"flex flex-col items-center justify-center"},
-            !audioOn && React.createElement("button",{onClick:()=>{
-              unlockAudio();
-              setAudioOn(true);
-            },
-            className:"mb-6 px-12 py-6 bg-blue-600 rounded-full text-white text-2xl font-black"},
-              "START SYSTEM"
-            ),
-            React.createElement("div",{className:"text-4xl uppercase"},"Now Calling"),
-            React.createElement("div",{className:`big-num ${active?"animate-flash":""}`},active?.num||"----"),
-            React.createElement("div",{className:"text-4xl"},active?.loc||"")
-          )
-        )
-      : React.createElement("div",{className:"admin-layout"},
-          React.createElement("div",{className:"bg-white rounded-xl p-6 overflow-auto"},
-            view==="reg" && React.createElement("button",{onClick:()=>{
-              const num=prompt("Queue number?");
-              if(num) db.collection("queue").doc(branch)
-                .collection("patients").add({
-                  num, status:"waiting", loc:"Waiting Area", time:Date.now()
-                });
-            },className:"bg-blue-600 text-white px-6 py-4 rounded-xl font-black"},
-              "REGISTER PATIENT"
-            ),
-
-            view!=="reg" && queue.map(p=>
-              React.createElement("div",{key:p.id,className:"flex justify-between py-2 border-b"},
-                React.createElement("span",{className:"font-black"},`#${p.num}`),
-                React.createElement("div",{className:"flex gap-1"},
-                  view==="doc" && ["Room 1","Room 2"].map(r=>
-                    React.createElement("button",{key:r,onClick:()=>update(p.id,{
-                      status:"calling",loc:r,callTrigger:Date.now()
-                    }),className:"bg-slate-800 text-white px-2 rounded"},r)
-                  ),
-                  view==="pharmacy" && React.createElement("button",{onClick:()=>update(p.id,{
-                    status:"collecting",loc:"Medication Counter",callTrigger:Date.now()
-                  }),className:"bg-emerald-600 text-white px-3 rounded"},"CALL")
-                )
-              )
-            )
-          )
-        )
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root"))
-  .render(React.createElement(App));
 </script>
+
 </body>
 </html>
