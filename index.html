@@ -3,30 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SwiftQueue - Klinik Ara 24 Jam</title>
+  <title>SwiftQueue Pro - Multi-Branch Master</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-  
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
   <style>
-    .clinic-header { 
-      font-family: "Helvetica", "Arial", sans-serif; 
-      font-weight: 700; 
-      color: #000080; 
-      letter-spacing: -0.02em;
-    }
-    body { font-family: 'Inter', sans-serif; }
+    .clinic-header { font-family: "Helvetica", sans-serif; font-weight: 700; color: #000080; }
+    body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; margin: 0; overflow: hidden; height: 100vh; }
     .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
-    .message-bar { background: #000080; color: white; text-align: center; padding: 10px; font-weight: 600; font-size: 1.2rem; }
+    
+    .nav-bar { background: white; border-bottom: 2px solid #e2e8f0; height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; z-index: 1000; }
+    .ticker-bar { background: #000; color: #fbbf24; height: 45px; display: flex; align-items: center; overflow: hidden; font-size: 1.2rem; font-weight: 800; border-bottom: 3px solid #1e293b; }
+    .ticker-move { white-space: nowrap; animation: marquee 40s linear infinite; display: inline-block; padding-left: 100%; }
+    @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+    .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 115px); gap: 20px; padding: 20px; box-sizing: border-box; }
+    .tv-grid { display: grid; grid-template-columns: 1.6fr 1fr; height: calc(100vh - 115px); gap: 20px; padding: 20px; box-sizing: border-box; }
+
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
   </style>
 </head>
-<body class="bg-slate-50 antialiased">
+<body>
   <div id="root"></div>
 
   <script>
@@ -42,38 +44,27 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const qRef = db.collection("queue");
-
-    // Function to generate a professional chime tone
-    const playChime = (audioCtx) => {
-      const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(554.37, now); // C#5
-      osc.frequency.exponentialRampToValueAtTime(440, now + 0.5); // A4
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.1, now + 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-      osc.connect(gain); gain.connect(audioCtx.destination);
-      osc.start(now); osc.stop(now + 0.5);
-    };
 
     function App() {
       const [view, setView] = React.useState('reg');
+      const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
       const [queue, setQueue] = React.useState([]);
       const [inputNum, setInputNum] = React.useState('');
+      const [inputName, setInputName] = React.useState('');
       const [audioOn, setAudioOn] = React.useState(false);
-      const audioCtx = React.useRef(null);
-      const lastCalledId = React.useRef(null);
-      const lastTimestamp = React.useRef(null);
+      const [now, setNow] = React.useState(new Date());
+      const lastCallId = React.useRef(null);
 
+      // Listen to specific branch collection
       React.useEffect(() => {
-        const unsub = qRef.orderBy("time", "desc").onSnapshot(snap => {
-          setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        });
-        return unsub;
-      }, []);
+        localStorage.setItem('clinic_branch', branch);
+        const unsub = db.collection("branches").doc(branch).collection("queue")
+          .orderBy("time", "desc").onSnapshot(snap => {
+            setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          });
+        const t = setInterval(() => setNow(new Date()), 1000);
+        return () => { unsub(); clearInterval(t); };
+      }, [branch]);
 
       const activeCall = React.useMemo(() => {
         return queue.find(p => p.status === 'calling' || p.status === 'collecting');
@@ -81,152 +72,129 @@
 
       React.useEffect(() => {
         if (view === 'tv' && audioOn && activeCall) {
-          if (activeCall.id !== lastCalledId.current || activeCall.time !== lastTimestamp.current) {
-            lastCalledId.current = activeCall.id;
-            lastTimestamp.current = activeCall.time;
-
-            if (!audioCtx.current) audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // 1. Play Chime
-            playChime(audioCtx.current);
-
-            // 2. Wait 600ms then Speak
-            setTimeout(() => {
-              window.speechSynthesis.cancel();
-              const destination = activeCall.loc === 'Dispensary' ? 'the Dispensary counter' : activeCall.loc;
-              const utterance = new SpeechSynthesisUtterance(`Number ${activeCall.num}. Please proceed to ${destination}.`);
-              utterance.lang = 'en-US';
-              utterance.rate = 0.8;
-              window.speechSynthesis.speak(utterance);
-            }, 600);
+          if (activeCall.time !== lastCallId.current) {
+            lastCallId.current = activeCall.time;
+            const msg = new SpeechSynthesisUtterance(`Number ${activeCall.num}. Please proceed to ${activeCall.loc === 'Medication Counter' ? 'the medication counter' : activeCall.loc}.`);
+            msg.lang = 'en-US'; msg.rate = 0.8;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(msg);
           }
         }
       }, [activeCall, view, audioOn]);
 
+      const qRef = db.collection("branches").doc(branch).collection("queue");
+
       const add = () => {
         if (!inputNum) return;
-        qRef.add({ num: parseInt(inputNum), status: 'waiting', loc: '', time: Date.now() });
-        setInputNum('');
+        qRef.add({ num: parseInt(inputNum), name: inputName || '', status: 'waiting', loc: 'Waiting Area', time: Date.now(), sortOrder: 1 });
+        setInputNum(''); setInputName('');
       };
 
-      const up = (id, s, l) => qRef.doc(id).update({ status: s, loc: l, time: Date.now() });
-      const del = (id) => qRef.doc(id).delete();
+      const up = (id, s, l) => qRef.doc(id).update({ status: s, loc: l, time: Date.now(), sortOrder: s === 'finished' ? 0 : 1 });
+      const del = (id) => { if(confirm("Remove patient?")) qRef.doc(id).delete(); };
+      const resetAll = () => { if(confirm(`Reset ALL data for ${branch}?`)) qRef.get().then(s => s.forEach(d => d.ref.delete())); };
 
-      const resetData = async () => {
-        if (confirm("Delete ALL records for today?")) {
-            const snapshot = await qRef.get();
-            const batch = db.batch();
-            snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-            await batch.commit();
-        }
-      };
+      const sortedQueue = [...queue].sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0) || b.time - a.time);
 
-      const LiveMonitor = ({ isDark = false, hideControls = true }) => (
-        React.createElement('div', { className: `bg-white rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'bg-white/5 border-white/10 text-white' : ''}` },
-          React.createElement('div', { className: `p-4 font-bold border-b text-[10px] uppercase tracking-widest ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}` }, 'Live Queue Monitor'),
+      const LiveMonitor = ({ isDark = false }) => (
+        React.createElement('div', { className: `rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white'}` },
+          React.createElement('div', { className: `p-4 font-bold border-b text-[10px] uppercase tracking-widest ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}` }, branch + ' Live Status'),
           React.createElement('div', { className: 'overflow-y-auto custom-scrollbar flex-1' },
-            queue.map(p => React.createElement('div', { key: p.id, className: `p-4 border-b flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-100'}` },
-              React.createElement('span', { className: 'text-2xl font-black' }, `#${p.num}`),
-              React.createElement('div', { className: 'flex items-center gap-2' },
-                React.createElement('span', { className: `text-[9px] font-bold px-2 py-1 rounded uppercase ${p.status === 'collecting' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600'}` }, 
-                  p.status === 'collecting' ? 'Dispensing' : p.status
-                ),
-                !hideControls && React.createElement('button', { onClick: () => del(p.id), className: 'text-slate-300 hover:text-red-500 ml-2' }, '✕')
-              )
+            sortedQueue.map(p => React.createElement('div', { key: p.id, className: `p-4 border-b flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-100'}` },
+              React.createElement('div', null, 
+                React.createElement('span', { className: 'text-2xl font-black' }, `#${p.num}`),
+                p.name && React.createElement('p', { className: 'text-[11px] font-bold text-blue-500 uppercase' }, p.name)
+              ),
+              React.createElement('span', { className: `text-[9px] font-black px-2 py-1 rounded uppercase ${p.status === 'finished' ? 'bg-slate-200 text-slate-500' : 'bg-blue-100 text-blue-600'}` }, p.status)
             ))
           )
         )
       );
 
-      return React.createElement('div', { className: 'min-h-screen flex flex-col' },
-        React.createElement('nav', { className: 'bg-white border-b sticky top-0 z-50 p-4 flex justify-between items-center shadow-sm' },
-          React.createElement('div', { className: 'flex flex-col' },
-            React.createElement('span', { className: 'clinic-header text-xl' }, 'KLINIK ARA 24 JAM'),
-            React.createElement('span', { className: 'text-[9px] font-bold text-slate-400 tracking-widest uppercase' }, 'Kuala Lumpur')
+      return React.createElement('div', { className: `app-container ${view === 'tv' ? 'tv-dark' : ''}` },
+        React.createElement('nav', { className: `nav-bar ${view === 'tv' ? 'hidden' : ''}` },
+          React.createElement('div', { className: 'flex gap-6 items-center' },
+            React.createElement('div', { className: 'flex flex-col' },
+              React.createElement('span', { className: 'clinic-header text-xl' }, 'KLINIK ARA 24 JAM'),
+              React.createElement('span', { className: 'text-[9px] font-bold text-slate-400 uppercase tracking-widest' }, branch + ' Branch')
+            ),
+            React.createElement('select', { 
+              value: branch, 
+              onChange: (e) => setBranch(e.target.value),
+              className: 'bg-slate-100 border-none rounded-lg p-2 text-[10px] font-black uppercase cursor-pointer outline-none focus:ring-2 focus:ring-blue-500'
+            }, ['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => React.createElement('option', {key: b, value: b}, b)))
           ),
           React.createElement('div', { className: 'flex gap-1 bg-slate-100 p-1 rounded-xl' },
-            ['reg', 'doc', 'dispensary', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `px-3 py-2 rounded-lg text-[9px] font-black transition-all ${view === v ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}` }, v.toUpperCase()))
+            ['reg', 'doc', 'pharmacy', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `px-4 py-2 rounded-lg text-[10px] font-black transition-all ${view === v ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}` }, v.toUpperCase()))
           )
         ),
 
-        React.createElement('main', { className: 'flex-1 overflow-hidden' },
-          
-          view === 'reg' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto grid lg:grid-cols-12 gap-8' },
-            React.createElement('div', { className: 'lg:col-span-5 flex flex-col gap-6' },
-              React.createElement('div', { className: 'bg-white p-8 rounded-2xl border shadow-sm' },
-                React.createElement('h2', { className: 'font-bold mb-6 text-slate-700 uppercase tracking-widest text-xs' }, 'Registration'),
-                React.createElement('input', { type: 'number', placeholder: 'Enter Number', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-5 border-2 rounded-2xl text-2xl font-bold outline-none' }),
-                React.createElement('button', { onClick: add, className: 'w-full py-5 bg-blue-700 text-white rounded-2xl font-bold text-lg hover:bg-blue-800 transition-colors' }, 'REGISTER PATIENT')
+        React.createElement('div', { className: 'ticker-bar' },
+          React.createElement('div', { className: 'ticker-move' }, `SELAMAT DATANG KE KLINIK ARA 24 JAM ${branch.toUpperCase()} | SEMOGA SEMUA DIKURNIAKAN KESABARAN DAN KESEMBUHAN DARIPADA SEGALA PENYAKIT • `)
+        ),
+
+        view === 'tv' ? 
+          React.createElement('div', { className: 'tv-grid' },
+            React.createElement('div', { className: 'flex flex-col items-center justify-center relative bg-white/5 rounded-[40px] border border-white/10' },
+              !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center rounded-[40px]' },
+                React.createElement('h2', { className: 'text-blue-400 font-bold mb-4 uppercase tracking-widest' }, branch + ' Branch'),
+                React.createElement('button', { onClick: () => setAudioOn(true), className: 'px-12 py-6 bg-blue-600 text-white rounded-full font-black text-2xl shadow-2xl' }, 'ACTIVATE SYSTEM')
               ),
-              React.createElement('button', { onClick: resetData, className: 'text-slate-400 text-xs hover:text-red-500 transition' }, 'RESET SYSTEM DATA')
+              React.createElement('span', { className: 'text-blue-400 text-4xl font-black uppercase tracking-[0.3em] mb-4' }, 'Now Calling'),
+              React.createElement('div', { className: 'text-[20vw] font-black text-white leading-none' }, activeCall?.num || '----'),
+              activeCall?.name && React.createElement('div', { className: 'text-5xl font-bold text-white/60 uppercase mb-8' }, activeCall.name),
+              React.createElement('div', { className: 'text-6xl font-bold text-emerald-400 uppercase' }, activeCall?.loc || 'Standby')
             ),
-            React.createElement('div', { className: 'lg:col-span-7 h-[calc(100vh-200px)]' }, React.createElement(LiveMonitor, { hideControls: false }))
-          ),
-
-          view === 'doc' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto flex flex-col h-[calc(100vh-120px)]' },
-            React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
-              React.createElement('div', { className: 'p-4 bg-slate-900 text-white font-bold uppercase text-xs tracking-widest' }, 'Doctor Console'),
-              React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
-                queue.filter(p => ['waiting', 'calling', 'consulting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-slate-50 transition-colors' },
-                  React.createElement('span', { className: 'text-4xl font-black' }, `#${p.num}`),
-                  React.createElement('div', { className: 'flex gap-2' },
-                    p.status === 'waiting' && React.createElement(React.Fragment, null,
-                      React.createElement('button', { onClick: () => up(p.id, 'calling', 'Room 1'), className: 'bg-slate-800 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'CALL R1'),
-                      React.createElement('button', { onClick: () => up(p.id, 'calling', 'Room 2'), className: 'bg-slate-800 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'CALL R2')
-                    ),
-                    p.status === 'calling' && React.createElement(React.Fragment, null,
-                      React.createElement('button', { onClick: () => up(p.id, 'calling', p.loc), className: 'bg-amber-500 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'RE-CALL'),
-                      React.createElement('button', { onClick: () => up(p.id, 'consulting', p.loc), className: 'bg-blue-600 text-white px-4 py-3 rounded-xl text-xs font-bold' }, 'START CONSULT')
-                    ),
-                    p.status === 'consulting' && React.createElement('button', { onClick: () => up(p.id, 'ready_for_dispensary', 'Dispensary'), className: 'bg-emerald-600 text-white px-6 py-3 rounded-xl text-xs font-bold' }, 'SEND TO DISPENSARY')
-                  )
-                ))
-              )
+            React.createElement('div', { className: 'flex flex-col gap-6' },
+              React.createElement('div', { className: 'bg-white/10 p-8 rounded-[40px] text-center border border-white/10' },
+                React.createElement('div', { className: 'text-7xl font-black text-blue-300' }, now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})),
+                React.createElement('div', { className: 'text-2xl font-bold text-white/50 uppercase mt-2' }, now.toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'short'}))
+              ),
+              React.createElement(LiveMonitor, { isDark: true })
             )
-          ),
+          ) :
+          React.createElement('div', { className: 'admin-layout' },
+            React.createElement('div', { className: 'bg-white rounded-[30px] border shadow-sm flex flex-col overflow-hidden' },
+              
+              view === 'reg' && React.createElement('div', { className: 'p-10' },
+                React.createElement('h2', { className: 'font-black text-slate-400 uppercase text-xs mb-8' }, 'Registration - ' + branch),
+                React.createElement('input', { placeholder: 'Patient Name', value: inputName, onChange: e => setInputName(e.target.value), className: 'w-full mb-4 p-4 border-2 rounded-2xl text-lg font-bold outline-none' }),
+                React.createElement('input', { type: 'number', placeholder: 'Queue Number', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-6 border-2 rounded-3xl text-5xl font-black text-center outline-none' }),
+                React.createElement('button', { onClick: add, className: 'w-full py-6 bg-blue-700 text-white rounded-3xl font-black text-xl' }, 'REGISTER PATIENT'),
+                React.createElement('button', { onClick: resetAll, className: 'w-full mt-20 text-slate-300 text-[10px] font-bold hover:text-red-500 uppercase transition-colors' }, 'Reset ' + branch + ' Data')
+              ),
 
-          view === 'dispensary' && React.createElement('div', { className: 'p-8 max-w-6xl mx-auto flex flex-col h-[calc(100vh-120px)]' },
-            React.createElement('div', { className: 'bg-white rounded-3xl border shadow-xl overflow-hidden flex flex-col flex-1' },
-              React.createElement('div', { className: 'p-4 bg-emerald-900 text-white font-bold uppercase text-xs tracking-widest' }, 'Dispensary Console'),
-              React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
-                queue.filter(p => ['ready_for_dispensary', 'collecting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center justify-between hover:bg-emerald-50 transition-colors' },
-                  React.createElement('span', { className: 'text-4xl font-black text-emerald-900' }, `#${p.num}`),
-                  React.createElement('div', { className: 'flex gap-2' },
-                    React.createElement('button', { onClick: () => up(p.id, 'collecting', 'Dispensary'), className: `px-6 py-3 rounded-xl text-xs font-bold transition ${p.status === 'collecting' ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'}` }, p.status === 'collecting' ? 'RE-CALL' : 'CALL TO DISPENSARY'),
-                    p.status === 'collecting' && React.createElement('button', { onClick: () => del(p.id), className: 'bg-slate-800 text-white px-6 py-3 rounded-xl text-xs font-bold' }, 'FINISH')
-                  )
-                ))
-              )
-            )
-          ),
-
-          view === 'tv' && React.createElement('div', { className: 'flex flex-col h-[calc(100vh-76px)]' },
-            React.createElement('div', { className: 'message-bar uppercase tracking-wide' },
-              'Please be patient while waiting for your turn.'
-            ),
-            React.createElement('div', { className: 'tv-dark flex-1 flex text-white' },
-              React.createElement('div', { className: 'flex-[1.5] flex flex-col items-center justify-center p-10 border-r border-white/5 relative' },
-                React.createElement('div', { className: 'text-blue-400 text-3xl font-black mb-10 tracking-[0.3em] uppercase' }, 'Now Calling'),
-                React.createElement('div', { className: 'text-[25rem] font-black leading-none mb-10' }, activeCall?.num || '----'),
-                React.createElement('div', { className: 'text-7xl font-medium text-emerald-400 uppercase tracking-wide' }, activeCall?.loc || 'Please Wait'),
-                
-                !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-20 rounded-l-3xl p-12 text-center' }, 
-                  React.createElement('div', { className: 'max-w-md' },
-                    React.createElement('h2', { className:'text-3xl font-bold mb-6'}, 'Voice System Required'),
-                    React.createElement('button', { 
-                      onClick: () => setAudioOn(true), 
-                      className: 'w-full px-12 py-6 bg-blue-600 text-white rounded-full font-black text-xl hover:scale-105 transition shadow-2xl' 
-                    }, 'ACTIVATE AUDIO')
-                  )
+              (view === 'doc' || view === 'pharmacy') && React.createElement(React.Fragment, null,
+                React.createElement('div', { className: `p-4 flex justify-between items-center text-white font-black text-[10px] uppercase tracking-widest ${view === 'pharmacy' ? 'bg-emerald-900' : 'bg-slate-900'}` }, 
+                   React.createElement('span', null, branch + ' ' + (view === 'pharmacy' ? 'Pharmacy' : 'Doctor')),
+                   React.createElement('span', null, 'Active Patient List')
+                ),
+                React.createElement('div', { className: 'flex-1 overflow-y-auto custom-scrollbar' },
+                  sortedQueue.map(p => React.createElement('div', { key: p.id, className: `p-4 border-b flex items-center justify-between transition ${p.status === 'finished' ? 'bg-slate-50' : ''}` },
+                    React.createElement('div', { className: 'flex flex-col gap-1' }, 
+                      React.createElement('span', { className: `text-3xl font-black ${p.status === 'finished' ? 'text-slate-400' : 'text-slate-900'}` }, `#${p.num}`),
+                      p.name && React.createElement('span', { className: 'text-[10px] font-bold text-blue-600 uppercase' }, p.name),
+                      React.createElement('span', { className: 'text-[9px] font-black text-slate-400 uppercase' }, `Current Loc: ${p.loc}`)
+                    ),
+                    React.createElement('div', { className: 'flex gap-1' },
+                      view === 'doc' ? React.createElement(React.Fragment, null,
+                        React.createElement('button', { onClick: () => up(p.id, 'calling', 'Room 1'), className: 'bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black' }, 'CALL R1'),
+                        React.createElement('button', { onClick: () => up(p.id, 'calling', 'Room 2'), className: 'bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black' }, 'CALL R2'),
+                        React.createElement('button', { onClick: () => up(p.id, 'collecting', 'Medication Counter'), className: 'bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black' }, 'TO PHARMACY')
+                      ) : React.createElement(React.Fragment, null,
+                        React.createElement('button', { onClick: () => up(p.id, 'collecting', 'Medication Counter'), className: 'bg-emerald-600 text-white px-4 py-3 rounded-lg text-[9px] font-black' }, 'CALL COUNTER'),
+                        React.createElement('button', { onClick: () => up(p.id, 'finished', 'Done'), className: 'bg-slate-800 text-white px-4 py-3 rounded-lg text-[9px] font-black' }, 'MARK DONE')
+                      ),
+                      React.createElement('button', { onClick: () => del(p.id), className: 'text-slate-300 hover:text-red-500 px-2' }, '✕')
+                    )
+                  ))
                 )
-              ),
-              React.createElement('div', { className: 'flex-1 p-10 h-full' }, React.createElement(LiveMonitor, { isDark: true }))
-            )
+              )
+            ),
+            React.createElement(LiveMonitor)
           )
-        )
       );
     }
-
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(App));
   </script>
