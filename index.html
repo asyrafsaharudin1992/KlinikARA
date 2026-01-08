@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SwiftQueue Pro - TV Optimized</title>
+  <title>SwiftQueue Pro - Console Master</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -12,25 +12,27 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
   <style>
-    .clinic-header { font-family: "Helvetica", "Arial", sans-serif; font-weight: 700; color: #000080; letter-spacing: -0.02em; }
-    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; height: 100vh; }
-    .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
-    .message-bar { background: #000080; color: white; text-align: center; padding: 12px; font-weight: 600; font-size: 1.1rem; }
-    .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-    .tv-dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
-    .status-pill { font-size: 0.65rem; padding: 3px 8px; border-radius: 999px; font-weight: 800; text-transform: uppercase; }
-    .tv-status-pill { font-size: 1rem; padding: 4px 14px; border-radius: 999px; font-weight: 900; text-transform: uppercase; }
-    .patient-card-inactive { opacity: 0.4; filter: grayscale(0.8); background-color: #f1f5f9; }
-    .tv-clock { font-family: monospace; letter-spacing: 0.05em; font-weight: 700; }
-    .log-entry { font-size: 0.65rem; color: #64748b; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; margin: 0; overflow: hidden; height: 100vh; }
+    .tv-mode { background-color: #0f172a; color: white; }
+    .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+    .nav-bar { background: white; border-bottom: 2px solid #e2e8f0; height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; z-index: 1000; }
+    .ticker-bar { background: #000; color: #fbbf24; height: 50px; display: flex; align-items: center; overflow: hidden; font-size: 1.4rem; font-weight: 800; border-bottom: 4px solid #1e293b; }
+    .ticker-move { white-space: nowrap; animation: marquee 40s linear infinite; display: inline-block; padding-left: 100%; }
+    @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
     
-    @keyframes pulse-call {
-      0% { color: #60a5fa; transform: scale(1); }
-      50% { color: #ffffff; transform: scale(1.05); text-shadow: 0 0 50px rgba(255,255,255,0.4); }
-      100% { color: #60a5fa; transform: scale(1); }
-    }
-    .animate-call-flash { animation: pulse-call 1.5s ease-in-out infinite; transform-origin: center; }
+    /* Layout Structure */
+    .view-content { flex: 1; display: grid; grid-template-columns: 1fr 400px; overflow: hidden; gap: 20px; padding: 20px; box-sizing: border-box; }
+    .console-card { background: white; border-radius: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; height: 100%; border: 1px solid #e2e8f0; }
+    .sidebar-monitor { background: white; border-radius: 24px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
+
+    /* TV Styling */
+    .tv-grid { display: grid; grid-template-columns: 1.6fr 1.1fr; flex: 1; gap: 2vw; padding: 2vw; overflow: hidden; }
+    .big-num { font-size: 18vw; font-weight: 900; line-height: 1; }
+    @keyframes pulse-call { 0%, 100% { color: #60a5fa; transform: scale(1); } 50% { color: #ffffff; transform: scale(1.03); } }
+    .animate-flash { animation: pulse-call 1.5s ease-in-out infinite; }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
   </style>
 </head>
 <body>
@@ -50,230 +52,176 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // --- TV-STABLE AUDIO FUNCTIONS ---
-    const playVoice = (text) => {
-      // Using a reliable Google TTS proxy for MP3 streaming
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=en&client=tw-ob`;
-      const audio = new Audio(url);
-      audio.play().catch(e => console.error("Voice Playback Error:", e));
-    };
-
-    const playChime = () => {
-      // Clear sounding chime from a reliable source
-      const chime = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-      chime.volume = 0.6;
-      chime.play().catch(e => console.error("Chime Error:", e));
+    const speakAirportStyle = (num, loc, status) => {
+        const chime = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        chime.volume = 0.8;
+        chime.play().then(() => {
+            chime.onended = () => {
+                const msg = new SpeechSynthesisUtterance();
+                if (status === 'collecting' || loc.toLowerCase().includes('pharmacy') || loc.toLowerCase().includes('counter')) {
+                    msg.text = `Attention number ${num}. Kindly proceed to medication counter. I repeat. Number ${num}. Medication counter.`;
+                } else {
+                    msg.text = `Attention please. Number ${num}. Please proceed to ${loc}. I repeat. Number ${num}. Please proceed to ${loc}.`;
+                }
+                msg.lang = 'en-US'; msg.rate = 0.82; msg.pitch = 1.0;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(msg);
+            };
+        }).catch(e => console.log("TV Interaction Required"));
     };
 
     function App() {
       const [view, setView] = React.useState('reg');
-      const [branchKey, setBranchKey] = React.useState(localStorage.getItem('selectedBranchKey') || 'B1');
-      const [branchNames, setBranchNames] = React.useState(JSON.parse(localStorage.getItem('clinicBranchNames')) || { B1: 'Kajang', B2: 'Seri Kembangan', B3: 'Semenyih' });
+      const [branchKey, setBranchKey] = React.useState(localStorage.getItem('branch') || 'B1');
+      const [branchNames] = React.useState({ B1: 'Kajang', B2: 'Seri Kembangan', B3: 'Semenyih' });
       const [queue, setQueue] = React.useState([]);
-      const [inputNum, setInputNum] = React.useState('');
-      const [inputName, setInputName] = React.useState('');
-      const [searchTerm, setSearchTerm] = React.useState('');
       const [audioOn, setAudioOn] = React.useState(false);
-      const [currentTime, setCurrentTime] = React.useState(new Date());
-      const [flash, setFlash] = React.useState(false);
-      const lastTrigger = React.useRef(0);
-
-      const qRef = db.collection("queue").doc(branchKey).collection("patients");
+      const [now, setNow] = React.useState(new Date());
+      const lastCallId = React.useRef(null);
 
       React.useEffect(() => {
-        localStorage.setItem('selectedBranchKey', branchKey);
-        localStorage.setItem('clinicBranchNames', JSON.stringify(branchNames));
-        const unsub = qRef.orderBy("time", "desc").onSnapshot(snap => setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => { unsub(); clearInterval(timer); };
-      }, [branchKey, branchNames]);
+        localStorage.setItem('branch', branchKey);
+        const unsub = db.collection("queue").doc(branchKey).collection("patients")
+          .orderBy("time", "desc").onSnapshot(s => setQueue(s.docs.map(d => ({id: d.id, ...d.data()}))));
+        const t = setInterval(() => setNow(new Date()), 1000);
+        return () => { unsub(); clearInterval(t); };
+      }, [branchKey]);
 
-      const activeCall = React.useMemo(() => {
-        const callingList = queue.filter(p => p.status === 'calling' || p.status === 'collecting');
-        return callingList.sort((a, b) => (b.callTrigger || 0) - (a.callTrigger || 0))[0];
+      const activePatient = React.useMemo(() => {
+        return queue.filter(p => p.status === 'calling' || p.status === 'collecting')
+                    .sort((a,b) => (b.callTrigger || 0) - (a.callTrigger || 0))[0];
       }, [queue]);
 
-      const sortedQueue = React.useMemo(() => {
-        const priority = { 'calling': 1, 'collecting': 1, 'ready_for_dispensary': 2, 'waiting': 3, 'in room': 4, 'not appeared': 5, 'finished': 6 };
-        return [...queue].sort((a, b) => (priority[a.status] || 9) - (priority[b.status] || 9));
-      }, [queue]);
-
-      const filteredQueue = sortedQueue.filter(p => 
-        p.num.toString().includes(searchTerm) || p.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-      // --- AUTOMATIC CALL TRIGGER ---
       React.useEffect(() => {
-        if (view === 'tv' && audioOn && activeCall) {
-          if (activeCall.callTrigger > lastTrigger.current) {
-            lastTrigger.current = activeCall.callTrigger;
-            setFlash(true);
-            
-            // 1. Play Entrance Chime
-            playChime();
-            
-            // 2. Play Voice after a 1.5s delay to let chime finish
-            setTimeout(() => {
-                const msg = `Attention please. Patient number ${activeCall.num}. Please proceed to ${activeCall.loc}.`;
-                playVoice(msg);
-                
-                // Keep flash active during speech, then fade
-                setTimeout(() => setFlash(false), 7000);
-            }, 1500);
+        if (view === 'tv' && audioOn && activePatient) {
+          const callId = `${activePatient.id}-${activePatient.callTrigger}`;
+          if (callId !== lastCallId.current) {
+            lastCallId.current = callId;
+            speakAirportStyle(activePatient.num, activePatient.loc, activePatient.status);
           }
         }
-      }, [activeCall, view, audioOn]);
+      }, [activePatient, audioOn, view]);
 
-      const updatePatient = (id, s, l, p, trigger = false) => {
-        const data = { status: s, loc: l, time: Date.now(), logs: [...(p.logs || []), `${s.toUpperCase()} (${l}) at ${new Date().toLocaleTimeString()}`] };
+      const updateStatus = (id, s, l, p, trigger = false) => {
+        const data = { status: s, loc: l, lastUpdated: Date.now() };
         if (trigger) data.callTrigger = Date.now();
-        qRef.doc(id).update(data);
+        db.collection("queue").doc(branchKey).collection("patients").doc(id).update(data);
       };
 
-      const SidebarMonitor = ({ isDark = false }) => (
-        React.createElement('div', { className: `rounded-3xl border shadow-lg overflow-hidden flex flex-col h-full ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}` },
-          React.createElement('div', { className: `p-4 border-b font-bold uppercase tracking-widest text-[10px] text-center ${isDark ? 'border-white/10 text-white/40' : 'bg-slate-50 text-slate-400'}` }, branchNames[branchKey] + ' Monitor'),
-          React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
-            queue.map(p => React.createElement('div', { key: p.id, className: `p-3 border-b flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-100'}` },
-              React.createElement('div', null,
-                React.createElement('span', { className: `text-xl font-black ${isDark ? 'text-white' : 'text-slate-800'}` }, `#${p.num}`),
-                !isDark && React.createElement('div', { className: `text-[9px] font-bold uppercase ${p.loc.includes('NOT') ? 'text-red-500' : 'opacity-50'}` }, p.loc)
+      const SidebarMonitor = ({ isTV = false }) => (
+        React.createElement('div', { className: isTV ? 'flex-1 bg-white/5 border border-white/10 rounded-[40px] overflow-hidden flex flex-col' : 'sidebar-monitor' },
+          React.createElement('div', { className: `p-4 font-black text-center text-[11px] uppercase tracking-widest ${isTV ? 'bg-white/10 text-white' : 'bg-slate-900 text-white'}` }, 'Queue Monitor'),
+          React.createElement('div', { className: 'overflow-y-auto flex-1 p-4 custom-scrollbar' },
+            queue.map(p => React.createElement('div', { key: p.id, className: `flex justify-between items-center py-4 border-b ${isTV ? 'border-white/10' : 'border-slate-50'}` },
+              React.createElement('div', { className: 'flex flex-col' },
+                React.createElement('span', { className: isTV ? 'text-5xl font-black text-white' : 'font-black text-2xl text-slate-800' }, `#${p.num}`),
+                React.createElement('span', { className: isTV ? 'text-lg text-blue-400 font-bold truncate w-48' : 'text-xs font-bold text-blue-600 truncate w-40' }, p.name),
+                React.createElement('span', { className: 'text-[9px] uppercase font-bold text-slate-400' }, p.loc)
               ),
-              React.createElement('span', { className: `status-pill ${p.status.includes('not') ? 'bg-red-100 text-red-700' : isDark ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-600'}` }, p.status)
+              React.createElement('span', { className: isTV ? 'text-xl font-black text-emerald-500 uppercase' : 'text-[10px] font-black uppercase px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100' }, p.status)
             ))
           )
         )
       );
 
-      return React.createElement('div', { className: 'h-screen flex flex-col' },
-        React.createElement('nav', { className: 'bg-white border-b p-3 flex justify-between items-center shadow-sm sticky top-0 z-50' },
-          React.createElement('div', {className: 'flex items-center gap-3'}, 
-            React.createElement('span', { className: 'clinic-header text-xl' }, 'KLINIK ARA 24 JAM'),
-            React.createElement('div', {className: 'flex items-center gap-1'},
-              React.createElement('select', { value: branchKey, onChange: (e) => setBranchKey(e.target.value), className: 'bg-blue-50 text-blue-800 text-[11px] font-black rounded-lg px-3 py-1.5 outline-none' }, 
-                  Object.keys(branchNames).map(k => React.createElement('option', {key: k, value: k}, branchNames[k].toUpperCase()))
-              ),
-              React.createElement('button', { onClick: () => {const n=prompt("Rename Branch:", branchNames[branchKey]); if(n) setBranchNames(p=>({...p,[branchKey]:n}))}, className: 'text-[10px] bg-slate-100 p-1.5 rounded' }, '✎')
+      return React.createElement('div', { className: `app-container ${view === 'tv' ? 'tv-mode' : ''}` },
+        
+        React.createElement('header', { className: `nav-bar ${view === 'tv' ? 'hidden' : ''}` },
+          React.createElement('div', { className: 'flex items-center gap-6' },
+            React.createElement('h1', { className: 'font-black text-blue-900 text-2xl tracking-tighter' }, 'KLINIK ARA 24 JAM'),
+            React.createElement('select', { value: branchKey, onChange: (e) => setBranchKey(e.target.value), className: 'bg-slate-100 p-2 rounded-xl font-bold text-sm outline-none' }, 
+              Object.keys(branchNames).map(k => React.createElement('option', {key:k, value:k}, branchNames[k].toUpperCase()))
             )
           ),
-          React.createElement('div', { className: 'flex gap-1 bg-slate-100 p-1 rounded-xl' },
-            ['reg', 'doc', 'dispensary', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `px-4 py-1.5 rounded-lg text-[10px] font-black ${view === v ? 'bg-white text-blue-700 shadow-md scale-105' : 'text-slate-500'}` }, v.toUpperCase()))
+          React.createElement('div', { className: 'flex gap-2' },
+            ['reg', 'doc', 'pharmacy', 'tv'].map(v => React.createElement('button', { key: v, onClick: () => setView(v), className: `nav-btn ${view === v ? 'nav-btn-active' : 'nav-btn-inactive'}` }, v.toUpperCase()))
           )
         ),
 
-        React.createElement('main', { className: 'flex-1 overflow-hidden' },
-          
-          view === 'reg' && React.createElement('div', { className: 'p-8 max-w-7xl mx-auto grid lg:grid-cols-12 gap-8 h-full pb-20' },
-            React.createElement('div', { className: 'lg:col-span-4 space-y-6' },
-              React.createElement('div', { className: 'bg-white p-6 rounded-3xl border border-slate-200 shadow-xl' },
-                React.createElement('h2', {className: 'text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest'}, branchNames[branchKey]),
-                React.createElement('input', { placeholder: 'Patient Name', value: inputName, onChange: e => setInputName(e.target.value), className: 'w-full mb-3 p-4 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20' }),
-                React.createElement('input', { type: 'number', placeholder: 'Queue No', value: inputNum, onChange: e => setInputNum(e.target.value), className: 'w-full mb-6 p-4 border rounded-2xl text-4xl font-black outline-none focus:ring-2 focus:ring-blue-500/20' }),
-                React.createElement('button', { onClick: () => {if(!inputNum)return; qRef.add({num:parseInt(inputNum),name:inputName||"Patient",status:'waiting',loc:'Waiting Area',time:Date.now(),logs:[`Registered at ${new Date().toLocaleTimeString()}`]}); setInputNum(''); setInputName('')}, className: 'w-full py-5 bg-blue-700 text-white rounded-2xl font-black text-lg shadow-lg hover:bg-blue-800' }, 'REGISTER PATIENT')
-              ),
-              React.createElement('button', { onClick: () => {if(confirm("RESET?")) qRef.get().then(s=>s.docs.forEach(d=>d.ref.delete()))}, className: 'text-red-500 text-[10px] font-bold opacity-30 ml-4 hover:opacity-100' }, 'RESET BRANCH DATA')
-            ),
-            React.createElement('div', { className: 'lg:col-span-8 h-[calc(100vh-160px)]' }, React.createElement(SidebarMonitor))
-          ),
+        React.createElement('div', { className: 'ticker-bar' },
+            React.createElement('div', { className: 'ticker-move' }, `SELAMAT DATANG KE KLINIK ARA 24 JAM | SEMOGA SEMUA DIKURNIAKAN KESABARAN DAN KESEMBUHAN DARIPIDA SEGALA BENTUK PENYAKIT • `)
+        ),
 
-          view === 'doc' && React.createElement('div', { className: 'p-6 max-w-[1600px] mx-auto grid lg:grid-cols-12 gap-6 h-full pb-20' },
-            React.createElement('div', { className: 'lg:col-span-9 flex flex-col h-full' },
-              React.createElement('div', { className: 'flex justify-between items-center mb-4' },
-                  React.createElement('input', { placeholder: 'Search...', value: searchTerm, onChange: e => setSearchTerm(e.target.value), className: 'p-3 border border-slate-200 rounded-full w-80 text-sm px-5 outline-none' }),
-                  React.createElement('button', { onClick: () => queue.filter(p=>p.status==='finished').forEach(p=>qRef.doc(p.id).delete()), className: 'bg-red-50 text-red-600 px-4 py-2 rounded-full text-[10px] font-bold' }, 'CLEAR ALL FINISHED')
-              ),
-              React.createElement('div', { className: 'bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full' },
-                React.createElement('div', { className: 'p-4 bg-slate-900 text-white font-bold uppercase text-[10px] grid grid-cols-12' }, 
-                  React.createElement('span', { className: 'col-span-1' }, 'QUEUE'), React.createElement('span', { className: 'col-span-3' }, 'PATIENT NAME'), React.createElement('span', { className: 'col-span-2 text-center' }, 'LOCATION'), React.createElement('span', { className: 'col-span-6 text-right' }, 'ACTIONS')
+        view === 'tv' ? 
+          React.createElement('div', { className: 'flex-1 flex flex-col overflow-hidden' },
+            React.createElement('div', { className: 'tv-grid' },
+              React.createElement('div', { className: 'bg-white/5 border-2 border-white/10 rounded-[60px] flex flex-col items-center justify-center relative' },
+                !audioOn && React.createElement('div', { onClick: () => { setAudioOn(true); window.speechSynthesis.speak(new SpeechSynthesisUtterance("System Active")); }, className: 'absolute inset-0 bg-black z-50 rounded-[60px] flex flex-col items-center justify-center cursor-pointer text-center px-10' }, 
+                    React.createElement('h1', {className:'text-5xl font-black text-blue-400 mb-6'}, 'SYSTEM READY'),
+                    React.createElement('button', {className:'px-16 py-8 bg-blue-600 rounded-full text-white text-3xl font-black shadow-2xl'}, 'START SYSTEM')
                 ),
-                React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
-                  filteredQueue.filter(p => p.status !== 'finished').map(p => React.createElement('div', { key: p.id, className: `p-4 border-b border-slate-100 grid grid-cols-12 items-center transition-all ${['ready_for_dispensary'].includes(p.status) ? 'patient-card-inactive' : ''}` },
-                    React.createElement('div', { className: 'col-span-1 text-3xl font-black' }, `#${p.num}`),
-                    React.createElement('div', { className: 'col-span-3 px-2 overflow-hidden' }, React.createElement('div', { className: 'text-[13px] font-bold text-blue-700 uppercase truncate' }, p.name), React.createElement('div', { className: 'log-entry' }, p.logs?.slice(-1))),
-                    React.createElement('div', { className: `col-span-2 text-center text-[10px] font-black uppercase ${p.loc.includes('NOT') ? 'text-red-600' : 'text-slate-400'}` }, p.loc),
-                    React.createElement('div', { className: 'col-span-6 flex gap-1 justify-end' },
-                      React.createElement('button', { onClick: () => updatePatient(p.id, 'calling', 'Room 1', p, true), className: 'bg-slate-800 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold hover:bg-black transition-colors' }, 'CALL R1'),
-                      React.createElement('button', { onClick: () => updatePatient(p.id, 'calling', 'Room 2', p, true), className: 'bg-slate-800 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold hover:bg-black transition-colors' }, 'CALL R2'),
-                      React.createElement('button', { onClick: () => updatePatient(p.id, 'in room', p.loc, p), className: 'bg-blue-600 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold' }, 'IN ROOM'),
-                      React.createElement('button', { onClick: () => updatePatient(p.id, 'not appeared', 'NOT APPEARED', p), className: 'bg-red-500 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold' }, 'MISSING'),
-                      React.createElement('button', { onClick: () => updatePatient(p.id, 'ready_for_dispensary', 'Dispensary', p), className: 'bg-emerald-600 text-white px-2.5 py-2 rounded-xl text-[9px] font-bold' }, 'TO DISP'),
-                      React.createElement('button', { onClick: () => qRef.doc(p.id).delete(), className: 'text-slate-300 ml-2 hover:text-red-500' }, '✕')
-                    )
-                  ))
-                )
-              )
-            ),
-            React.createElement('div', { className: 'lg:col-span-3 h-[calc(100vh-160px)]' }, React.createElement(SidebarMonitor))
-          ),
-
-          view === 'dispensary' && React.createElement('div', { className: 'p-6 max-w-[1600px] mx-auto grid lg:grid-cols-12 gap-6 h-full pb-20' },
-            React.createElement('div', { className: 'lg:col-span-9 flex flex-col h-full' },
-              React.createElement('div', { className: 'bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full' },
-                React.createElement('div', { className: 'p-4 bg-emerald-900 text-white font-bold uppercase text-[10px] grid grid-cols-12' },
-                  React.createElement('span', { className: 'col-span-1' }, 'QUEUE'), React.createElement('span', { className: 'col-span-4' }, 'PATIENT DETAILS'), React.createElement('span', { className: 'col-span-2 text-center' }, 'LOCATION'), React.createElement('span', { className: 'col-span-5 text-right pr-4' }, 'ACTIONS')
-                ),
-                React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
-                  sortedQueue.filter(p => ['ready_for_dispensary', 'collecting', 'finished'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: `p-5 border-b border-slate-100 flex items-center justify-between ${p.status === 'finished' ? 'opacity-40 grayscale bg-slate-50' : ''}` },
-                    React.createElement('div', { className: 'w-16 text-3xl font-black text-emerald-900' }, `#${p.num}`),
-                    React.createElement('div', { className: 'flex-1 px-4' }, React.createElement('div', { className: 'text-[13px] font-bold text-emerald-700 uppercase' }, p.name), React.createElement('div', { className:'log-entry'}, p.logs?.slice(-1))),
-                    React.createElement('div', { className: `w-32 text-center text-[10px] font-black uppercase ${p.loc.includes('NOT') ? 'text-red-600' : 'text-slate-400'}` }, p.loc),
-                    React.createElement('div', { className: 'flex gap-2 justify-end' },
-                      React.createElement('button', { onClick: () => updatePatient(p.id, 'collecting', 'Dispensary', p, true), className: 'bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-bold hover:bg-emerald-700 transition-all' }, 'CALL TO COUNTER'),
-                      React.createElement('button', { onClick: () => updatePatient(p.id, 'finished', 'Clinic', p), className: 'bg-slate-800 text-white px-6 py-2.5 rounded-xl text-[10px] font-bold hover:bg-black transition-all' }, 'DONE'),
-                      React.createElement('button', { onClick: () => qRef.doc(p.id).delete(), className: 'text-slate-300 ml-4 hover:text-red-500' }, '✕')
-                    )
-                  ))
-                )
-              )
-            ),
-            React.createElement('div', { className: 'lg:col-span-3 h-[calc(100vh-120px)]' }, React.createElement(SidebarMonitor))
-          ),
-
-          view === 'tv' && React.createElement('div', { className: 'flex flex-col h-[calc(100vh-65px)] overflow-hidden' },
-            React.createElement('div', { className: 'message-bar uppercase tracking-[0.2em]' }, branchNames[branchKey].toUpperCase() + ': PLEASE WAIT FOR YOUR TURN.'),
-            React.createElement('div', { className: 'tv-dark flex-1 flex p-8 gap-8 text-white' },
-              React.createElement('div', { className: 'flex-[1.6] bg-white/5 border border-white/10 rounded-[60px] flex flex-col items-center justify-center relative shadow-2xl overflow-hidden' },
-                
-                // --- TEST SOUND BUTTON (HIDDEN IN CORNER) ---
-                React.createElement('button', { 
-                    onClick: () => playVoice("Testing sound system"), 
-                    className: 'absolute top-10 right-10 p-4 bg-white/10 rounded-full text-[10px] opacity-20 hover:opacity-100' 
-                }, 'TEST SOUND'),
-
-                React.createElement('div', { className: 'text-blue-400 text-4xl font-black mb-8 tracking-[0.6em] uppercase opacity-60' }, 'Now Calling'),
-                React.createElement('div', { className: 'relative w-full flex items-center justify-center' },
-                    React.createElement('div', { className: `text-[28rem] font-black leading-none mb-10 ${flash ? 'animate-call-flash' : 'text-white'}` }, activeCall?.num || '----')
-                ),
-                React.createElement('div', { className: 'text-[8.5rem] font-bold text-emerald-400 uppercase tracking-[0.1em]' }, activeCall?.loc || 'Standby'),
-                
-                !audioOn && React.createElement('div', { className: 'absolute inset-0 bg-black/98 flex flex-col items-center justify-center z-50 rounded-[60px]' }, 
-                  React.createElement('button', { onClick: () => { setAudioOn(true); playVoice("Audio system activated"); }, className: 'px-20 py-10 bg-blue-700 text-white rounded-full font-black text-4xl shadow-2xl' }, 'ACTIVATE HUB AUDIO')
-                )
+                React.createElement('span', { className: 'text-blue-400 text-5xl font-black opacity-30 mb-2' }, 'NOW CALLING'),
+                React.createElement('h1', { className: `big-num ${activePatient ? 'animate-flash' : ''}` }, activePatient?.num || '----'),
+                React.createElement('span', { className: 'text-5xl font-black text-white/80 mb-8 uppercase' }, activePatient?.name || ''),
+                React.createElement('span', { className: 'text-emerald-400 text-[6vw] font-black uppercase' }, activePatient?.loc || 'Standby')
               ),
-              React.createElement('div', { className: 'flex-1 flex flex-col h-full gap-4' },
-                  React.createElement('div', { className: 'bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-[45px] flex flex-col items-center justify-center shadow-xl' },
-                      React.createElement('div', { className: 'tv-clock text-7xl text-blue-300 mb-1' }, currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })),
-                      React.createElement('div', { className: 'text-xl font-black text-white/50 tracking-[0.2em] uppercase' }, currentTime.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short' }))
-                  ),
-                  React.createElement('div', { className: 'flex-1 bg-white/5 border border-white/10 rounded-[45px] overflow-hidden flex flex-col' },
-                      React.createElement('div', { className: 'p-4 border-b border-white/10 text-white/30 text-[11px] font-black uppercase tracking-[0.4em] text-center' }, 'Live Terminal Monitor'),
-                      React.createElement('div', { className: 'overflow-y-auto flex-1 custom-scrollbar' },
-                          queue.map(p => React.createElement('div', { key: p.id, className: 'p-7 border-b border-white/5 flex justify-between items-center' },
-                              React.createElement('div', null,
-                                  React.createElement('span', { className: 'text-6xl font-black text-white' }, `#${p.num}`),
-                                  React.createElement('div', { className: `text-xl font-bold uppercase mt-1.5 ${p.loc.includes('NOT') ? 'text-red-400' : 'text-white/30'}` }, p.loc)
-                              ),
-                              React.createElement('span', { className: `tv-status-pill ${p.status.includes('not') ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'}` }, p.status)
-                          ))
-                      )
-                  )
+              React.createElement('div', { className: 'flex flex-col gap-6' },
+                React.createElement('div', { className: 'bg-white/10 p-10 rounded-[40px] text-center shadow-xl border border-white/10' },
+                  React.createElement('div', { className: 'text-[7.5rem] font-black text-blue-300 leading-none' }, now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})),
+                  React.createElement('div', { className: 'text-4xl font-black mt-2 uppercase' }, now.toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'}))
+                ),
+                React.createElement(SidebarMonitor, { isTV: true })
               )
             )
+          ) 
+          : 
+          React.createElement('div', { className: 'view-content' },
+            React.createElement('div', { className: 'console-card' },
+              view === 'reg' && React.createElement('div', { className: 'p-12' },
+                React.createElement('h2', { className: 'text-2xl font-black mb-6 text-slate-300 uppercase tracking-widest' }, 'Patient Registration'),
+                React.createElement('input', { id: 'pname', placeholder: 'Enter Patient Name', className: 'w-full text-xl font-bold p-4 border-2 rounded-2xl mb-4' }),
+                React.createElement('input', { id: 'qnum', type: 'number', placeholder: 'Queue No', className: 'w-full text-center text-8xl font-black p-6 border-4 rounded-[40px] mb-8 outline-none' }),
+                React.createElement('button', { onClick: () => { 
+                    const n = document.getElementById('qnum').value; const nm = document.getElementById('pname').value;
+                    if(n) db.collection("queue").doc(branchKey).collection("patients").add({num:n, name:nm || 'Patient', status:'waiting', loc:'Waiting Area', time:Date.now()}); 
+                    document.getElementById('qnum').value = ''; document.getElementById('pname').value = '';
+                }, className: 'w-full bg-blue-600 text-white text-3xl font-black py-8 rounded-[40px] shadow-lg active:scale-95 transition-all' }, 'REGISTER PATIENT')
+              ),
+              view === 'doc' && React.createElement('div', { className: 'flex flex-col h-full' },
+                React.createElement('div', { className: 'p-4 bg-slate-900 text-white flex font-bold text-[11px] uppercase tracking-widest' },
+                   React.createElement('span', { className: 'w-16' }, 'NUM'),
+                   React.createElement('span', { className: 'flex-1' }, 'PATIENT NAME'),
+                   React.createElement('span', { className: 'w-32' }, 'LOCATION'),
+                   React.createElement('span', { className: 'w-48 text-right' }, 'CONTROLS')
+                ),
+                React.createElement('div', { className: 'flex-1 overflow-y-auto custom-scrollbar' },
+                  queue.filter(p => p.status !== 'finished').map(p => React.createElement('div', { key: p.id, className: 'p-4 border-b flex items-center hover:bg-slate-50 transition-colors' },
+                      React.createElement('span', {className:'w-16 text-3xl font-black text-blue-800'}, `#${p.num}`),
+                      React.createElement('span', {className:'flex-1 font-bold uppercase text-slate-700 truncate pr-4'}, p.name),
+                      React.createElement('span', {className:'w-32 text-[10px] font-black text-slate-400 uppercase'}, p.loc),
+                      React.createElement('div', {className:'w-48 flex gap-1 justify-end'},
+                          React.createElement('button', { onClick: () => updateStatus(p.id, 'calling', 'Room 1', p, true), className: 'bg-slate-800 text-white px-3 py-2 rounded-xl text-[10px] font-black' }, 'R1'),
+                          React.createElement('button', { onClick: () => updateStatus(p.id, 'calling', 'Room 2', p, true), className: 'bg-slate-800 text-white px-3 py-2 rounded-xl text-[10px] font-black' }, 'R2'),
+                          React.createElement('button', { onClick: () => updateStatus(p.id, 'in room', p.loc, p), className: 'bg-blue-500 text-white px-3 py-2 rounded-xl text-[10px] font-black' }, 'IN'),
+                          React.createElement('button', { onClick: () => updateStatus(p.id, 'to dispensary', 'Medication Counter', p), className: 'bg-emerald-600 text-white px-3 py-2 rounded-xl text-[10px] font-black' }, 'DISP')
+                      )
+                  ))
+                )
+              ),
+              view === 'pharmacy' && React.createElement('div', { className: 'flex flex-col h-full' },
+                React.createElement('div', { className: 'p-4 bg-emerald-900 text-white flex font-bold text-[11px] uppercase tracking-widest' },
+                   React.createElement('span', { className: 'w-16' }, 'NUM'),
+                   React.createElement('span', { className: 'flex-1' }, 'PATIENT NAME'),
+                   React.createElement('span', { className: 'w-32' }, 'LOCATION'),
+                   React.createElement('span', { className: 'w-48 text-right' }, 'CONTROLS')
+                ),
+                React.createElement('div', { className: 'flex-1 overflow-y-auto custom-scrollbar' },
+                  queue.filter(p => ['to dispensary', 'collecting'].includes(p.status)).map(p => React.createElement('div', { key: p.id, className: 'p-6 border-b flex items-center hover:bg-emerald-50 transition-colors' },
+                      React.createElement('span', {className:'w-16 text-4xl font-black text-emerald-900'}, `#${p.num}`),
+                      React.createElement('span', {className:'flex-1 text-lg font-black uppercase text-emerald-700 truncate pr-4'}, p.name),
+                      React.createElement('span', {className:'w-32 text-xs font-bold text-slate-400'}, p.loc),
+                      React.createElement('div', {className:'w-48 flex gap-2 justify-end'},
+                          React.createElement('button', { onClick: () => updateStatus(p.id, 'collecting', 'Medication Counter', p, true), className: 'bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-xs shadow-md' }, 'CALL'),
+                          React.createElement('button', { onClick: () => updateStatus(p.id, 'finished', 'Done', p), className: 'bg-slate-800 text-white px-6 py-3 rounded-2xl font-black text-xs' }, 'DONE')
+                      )
+                  ))
+                )
+              )
+            ),
+            React.createElement(SidebarMonitor, { isTV: false })
           )
-        )
       );
     }
-
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   </script>
 </body>
