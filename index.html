@@ -23,6 +23,23 @@
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         .ticker-move { white-space: nowrap; animation: marquee 30s linear infinite; display: inline-block; padding-left: 100%; }
         
+        /* Ticker Styling - High Contrast */
+        .ticker-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 60px;
+            background-color: #000000;
+            color: #fbbf24; /* Amber-400 */
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            font-size: 1.5rem;
+            font-weight: 800;
+            border-top: 4px solid #d97706; /* Amber-600 */
+            z-index: 50;
+        }
+
         @keyframes flash-call {
             0%, 100% { opacity: 1; color: white; transform: scale(1); text-shadow: 0 0 20px rgba(255,255,255,0.5); }
             50% { opacity: 0.8; color: #60a5fa; transform: scale(1.02); text-shadow: 0 0 40px rgba(96, 165, 250, 0.8); }
@@ -43,9 +60,14 @@
         
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* Grid Layouts */
+        /* Navigation Bar - Increased Height */
+        .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 50; position: relative; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .nav-light { background: white; border-bottom: 2px solid #e2e8f0; }
+        .nav-dark { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+        /* Grid Layouts - Adjusted for larger header */
         .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 90px); gap: 20px; padding: 20px; box-sizing: border-box; }
-        .tv-grid { display: grid; grid-template-columns: 1.6fr 1fr; height: calc(100vh - 135px); gap: 20px; padding: 20px; box-sizing: border-box; overflow: hidden; transform-origin: top center; transition: transform 0.3s ease; }
+        .tv-grid { display: grid; grid-template-columns: 1.6fr 1fr; height: calc(100vh - 150px); gap: 20px; padding: 20px; box-sizing: border-box; overflow: hidden; transform-origin: top center; transition: transform 0.3s ease; }
     </style>
 </head>
 <body>
@@ -209,7 +231,7 @@
                 return sortNewest ? b.time - a.time : a.time - b.time;
             });
 
-            // Pharmacy Filter logic - NOW INCLUDES 'finished' TO KEEP THEM VISIBLE
+            // Pharmacy Filter
             const pharmacyQueue = sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished');
 
             // --- COMPONENTS ---
@@ -310,7 +332,7 @@
                                 </div>
                             </div>
                             <div className="ticker-bar">
-                                <div className="ticker-move">WELCOME TO KLINIK ARA 24 JAM {branch.toUpperCase()} • PLEASE WAIT FOR YOUR NUMBER • EMERGENCY CASES WILL BE PRIORITIZED • </div>
+                                <div className="ticker-move">Selamat datang ke KLINIK ARA 24 JAM. Mohon bersabar sehingga nombor dipanggil. Moga segala urusan tuan puan dimudahkan amin.</div>
                             </div>
                         </div>
                     ) : (
