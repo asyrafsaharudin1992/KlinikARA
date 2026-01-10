@@ -44,18 +44,8 @@
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
         /* Grid Layouts */
-        .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 70px); gap: 20px; padding: 20px; box-sizing: border-box; }
-        .tv-grid { 
-            display: grid; 
-            grid-template-columns: 1.6fr 1fr; 
-            height: calc(100vh - 115px); 
-            gap: 20px; 
-            padding: 20px; 
-            box-sizing: border-box; 
-            overflow: hidden; 
-            transform-origin: top center; 
-            transition: transform 0.2s ease-out;
-        }
+        .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 90px); gap: 20px; padding: 20px; box-sizing: border-box; }
+        .tv-grid { display: grid; grid-template-columns: 1.6fr 1fr; height: calc(100vh - 135px); gap: 20px; padding: 20px; box-sizing: border-box; overflow: hidden; transform-origin: top center; transition: transform 0.3s ease; }
     </style>
 </head>
 <body>
@@ -144,13 +134,11 @@
                             
                             const msg = new SpeechSynthesisUtterance(fullMessage);
                             
-                            // STRICT FEMALE VOICE SELECTION
+                            // Female Voice Priority
                             const femaleVoice = availableVoices.find(v => v.name === 'Google US English') || 
                                               availableVoices.find(v => v.name.includes('Zira')) || 
                                               availableVoices.find(v => v.name.includes('Samantha')) ||
-                                              availableVoices.find(v => v.name.toLowerCase().includes('female')) ||
-                                              availableVoices.find(v => v.lang === 'en-US'); // Fallback
-                                              
+                                              availableVoices.find(v => v.name.toLowerCase().includes('female'));
                             if (femaleVoice) msg.voice = femaleVoice;
                             
                             msg.lang = 'en-US';
@@ -171,8 +159,11 @@
                 }).catch(e => console.log("Audio Error:", e));
             };
 
+            // --- WATCHER ---
             React.useEffect(() => {
-                const caller = queue.find(p => p.callTrigger);
+                const activeCallers = queue.filter(p => p.callTrigger && p.status !== 'finished');
+                const caller = activeCallers.sort((a,b) => b.callTrigger - a.callTrigger)[0];
+
                 if (view === 'tv' && audioOn && caller) {
                     if (caller.callTrigger !== lastCallTrigger.current) {
                         lastCallTrigger.current = caller.callTrigger;
@@ -192,7 +183,9 @@
             };
 
             const updatePatient = (id, s, l, triggerCall = false) => {
+                // When marking as finished, sortOrder becomes 0 to move to bottom
                 const data = { status: s, loc: l, sortOrder: s === 'finished' ? 0 : 1 };
+                
                 if (triggerCall) { 
                     data.callTrigger = Date.now(); 
                     data.isNewToPharmacy = false; 
@@ -200,6 +193,7 @@
                 else if (s === 'collecting') { 
                     data.isNewToPharmacy = true; 
                 } 
+                
                 qRef.doc(id).update(data);
             };
 
@@ -215,17 +209,17 @@
                 return sortNewest ? b.time - a.time : a.time - b.time;
             });
 
-            // Pharmacy Filter logic
-            const pharmacyQueue = sortedQueue.filter(p => p.status === 'collecting');
+            // Pharmacy Filter logic - NOW INCLUDES 'finished' TO KEEP THEM VISIBLE
+            const pharmacyQueue = sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished');
 
-            // --- RENDER HELPERS ---
+            // --- COMPONENTS ---
             const SettingsModal = () => (
                 <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm">
                     <div className="bg-white p-8 rounded-3xl w-96 shadow-2xl">
                         <h3 className="font-bold text-xl mb-6 text-slate-800">System Controls</h3>
                         <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Voice Speed ({voiceSpeed}x)</label>
                         <input type="range" min="0.5" max="1.5" step="0.05" value={voiceSpeed} onChange={e => setVoiceSpeed(parseFloat(e.target.value))} className="w-full mb-6 accent-blue-600" />
-                        <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">TV Display Scale ({uiScale}x)</label>
+                        <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">TV Scale ({uiScale}x)</label>
                         <input type="range" min="0.8" max="1.2" step="0.05" value={uiScale} onChange={e => setUiScale(parseFloat(e.target.value))} className="w-full mb-8 accent-blue-600" />
                         <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">CLOSE</button>
                     </div>
@@ -266,30 +260,32 @@
 
                     {/* NAV BAR */}
                     <nav className={`global-nav ${view === 'tv' ? 'nav-dark' : 'nav-light'}`}>
-                        <div className="flex gap-6 items-center">
-                            <div className="flex flex-col">
-                                <span className={`clinic-header text-xl ${view === 'tv' ? 'text-white' : ''}`}>KLINIK ARA 24 JAM</span>
-                                <span className="text-[9px] font-bold opacity-50 uppercase tracking-widest">{branch} Pro</span>
+                        <div className="flex gap-8 items-center">
+                            <div className="flex flex-col justify-center">
+                                <span className={`clinic-header text-3xl ${view === 'tv' ? 'text-white' : ''}`}>KLINIK ARA 24 JAM</span>
+                                <span className="text-xs font-bold opacity-60 uppercase tracking-[0.2em] mt-1">{branch} Pro Edition</span>
                             </div>
-                            <select value={branch} onChange={e => setBranch(e.target.value)} className={`border-none rounded-lg p-2 text-[10px] font-black uppercase outline-none cursor-pointer ${view === 'tv' ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'}`}>
+                            <select value={branch} onChange={e => setBranch(e.target.value)} className={`border-none rounded-xl p-3 text-sm font-black uppercase outline-none cursor-pointer ${view === 'tv' ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'}`}>
                                 {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b} style={{color:'black'}}>{b}</option>)}
                             </select>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className={`flex gap-1 p-1 rounded-xl ${view === 'tv' ? 'bg-white/5' : 'bg-slate-100'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className={`flex gap-2 p-2 rounded-2xl ${view === 'tv' ? 'bg-white/5' : 'bg-slate-100'}`}>
                                 {['reg', 'doc', 'pharmacy', 'tv'].map(v => (
-                                    <button key={v} onClick={() => setView(v)} className={`px-4 py-2 rounded-lg text-[10px] font-black transition-all ${view === v ? 'bg-blue-600 text-white shadow-sm' : (view === 'tv' ? 'text-white/40 hover:text-white' : 'text-slate-500 hover:bg-slate-200')}`}>
+                                    <button key={v} onClick={() => setView(v)} className={`px-6 py-3 rounded-xl text-xs font-black transition-all ${view === v ? 'bg-blue-600 text-white shadow-lg transform scale-105' : (view === 'tv' ? 'text-white/40 hover:text-white' : 'text-slate-500 hover:bg-slate-200')}`}>
                                         {v.toUpperCase()}
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={() => setShowSettings(true)} className={`p-2 rounded-lg ${view === 'tv' ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>⚙</button>
+                            <button onClick={() => setShowSettings(true)} className={`p-4 rounded-xl ${view === 'tv' ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </button>
                         </div>
                     </nav>
 
                     {/* VIEW ROUTER */}
                     {view === 'tv' ? (
-                        <div className="relative h-[calc(100vh-70px)]">
+                        <div className="relative h-[calc(100vh-90px)]">
                             <div className="tv-grid" style={{ transform: `scale(${uiScale})` }}>
                                 <div className="flex flex-col items-center justify-center relative glass-panel rounded-[40px]">
                                     {!audioOn && (
@@ -299,10 +295,10 @@
                                     )}
                                     <span className="text-blue-400 text-4xl font-black uppercase tracking-[0.3em] mb-4">Now Calling</span>
                                     <div className={`text-[22vw] font-black text-white leading-none ${isCalling ? 'animate-calling' : ''}`}>
-                                        {queue.find(p => p.callTrigger)?.num || '----'}
+                                        {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '----'}
                                     </div>
-                                    <div className="text-5xl font-bold text-white/60 uppercase mb-8">{queue.find(p => p.callTrigger)?.name || ''}</div>
-                                    <div className="text-6xl font-bold text-emerald-400 uppercase">{queue.find(p => p.callTrigger)?.loc || 'Standby'}</div>
+                                    <div className="text-5xl font-bold text-white/60 uppercase mb-8">{queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || ''}</div>
+                                    <div className="text-6xl font-bold text-emerald-400 uppercase">{queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.loc || 'Standby'}</div>
                                 </div>
                                 <div className="flex flex-col gap-6">
                                     <div className="glass-panel p-8 rounded-[40px] text-center shadow-xl">
@@ -382,9 +378,12 @@
                                                             <>
                                                                 {/* PHARMACY: "CALL COUNTER" - Updates location to 'Medication Counter' and triggers call */}
                                                                 <button onClick={() => updatePatient(p.id, 'collecting', 'Medication Counter', true)} className="bg-emerald-600 text-white px-4 py-3 rounded-lg text-[9px] font-black hover:bg-emerald-800 transition-colors">CALL COUNTER</button>
+                                                                
+                                                                {/* MARK DONE: No Announcement (triggerCall = false), but keeps patient on list */}
                                                                 <button onClick={() => updatePatient(p.id, 'finished', 'Done', false)} className="bg-slate-800 text-white px-4 py-3 rounded-lg text-[9px] font-black hover:bg-black transition-colors">MARK DONE</button>
                                                             </>
                                                         )}
+                                                        {/* OPTIONAL REMOVE BUTTON - ALWAYS AVAILABLE */}
                                                         <button onClick={() => { if(confirm("Remove?")) qRef.doc(p.id).delete(); }} className="text-slate-300 hover:text-red-500 px-2 font-black">✕</button>
                                                     </div>
                                                 </div>
