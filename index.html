@@ -30,14 +30,11 @@
         .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
         
         /* UI Utils */
-        /* Darker glass for better contrast */
         .glass-panel { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        
         .custom-scrollbar { overflow-y: auto; overflow-x: hidden; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
         /* Layouts */
@@ -66,7 +63,6 @@
         };
 
         const CUSTOM_CHIME_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
-        // CTO NOTE: Add new rooms here to auto-generate buttons
         const CLINIC_ROOMS = ['Room 1', 'Room 2', 'Room 3', 'Nebuliser'];
 
         firebase.initializeApp(firebaseConfig);
@@ -144,17 +140,17 @@
 
                 const unsub = db.collection("branches").doc(branch).collection("queue")
                     .orderBy("time", "desc")
-                    .limit(150) // Performance Limit
+                    .limit(150)
                     .onSnapshot(snap => {
                         setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     });
                 return () => unsub();
             }, [branch, voiceSpeed, uiScale, sortNewest]);
 
-            // Audio Logic
+            // Audio
             const runSequence = (num, loc) => {
                 setIsCalling(true);
-                setTimeout(() => setIsCalling(false), 10000); // 10s Blink Limit
+                setTimeout(() => setIsCalling(false), 10000); 
                 
                 window.speechSynthesis.cancel();
                 chimeRef.current.pause();
@@ -184,7 +180,7 @@
                 }).catch(e => console.log("Audio Error:", e));
             };
 
-            // Watcher with Stale Check
+            // Watcher
             React.useEffect(() => {
                 const activeCallers = queue.filter(p => p.callTrigger);
                 const caller = activeCallers.sort((a,b) => b.callTrigger - a.callTrigger)[0];
@@ -229,7 +225,6 @@
             };
 
             // Memoized Lists
-            // 1. Admin/Pharmacy List (Respects "sortNewest" and groups Active vs Finished)
             const sortedQueue = React.useMemo(() => {
                 return [...queue].sort((a, b) => {
                     if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (b.sortOrder || 0) - (a.sortOrder || 0);
@@ -237,15 +232,13 @@
                 });
             }, [queue, sortNewest]);
 
-            // 2. Pharmacy Filter
             const pharmacyQueue = React.useMemo(() => {
                 return sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished');
             }, [sortedQueue]);
 
-            // 3. Right Monitor List (Strictly Chronological - Absolute latest on top)
             const monitorQueue = React.useMemo(() => {
                 return [...queue].sort((a,b) => {
-                    return b.time - a.time; // Strict time sort, ignoring status grouping
+                    return b.time - a.time;
                 });
             }, [queue]);
 
@@ -328,17 +321,14 @@
                                         )}
                                         <span className="text-blue-300 text-3xl font-black uppercase tracking-[0.3em] absolute top-6">Now Calling</span>
                                         
-                                        {/* OPTIMIZED NUMBER DISPLAY - 26vh Fixed Height */}
                                         <div className={`font-black text-white leading-none drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)] ${isCalling ? 'animate-calling' : ''}`} style={{ fontSize: '26vh', marginTop: '20px' }}>
                                             {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '---'}
                                         </div>
                                         
-                                        {/* NAME DISPLAY - High Contrast White */}
                                         <div className="text-5xl font-bold text-white uppercase line-clamp-1 text-center w-full px-4 drop-shadow-md">
                                             {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || '...'}
                                         </div>
                                         
-                                        {/* LOCATION DISPLAY */}
                                         <div className="text-6xl font-black text-emerald-400 uppercase text-center w-full drop-shadow-lg mt-2">
                                             {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.loc || 'Standby'}
                                         </div>
@@ -401,20 +391,22 @@
                                                         </div>
                                                     </div>
                                                     
-                                                    <div className="flex gap-1 flex-wrap justify-end">
+                                                    <div className="flex gap-1 flex-wrap justify-end max-w-[50%]">
                                                         {view === 'doc' ? (
                                                             <>
-                                                                {(p.status === 'waiting' || p.status === 'pending' || p.status === 'finished') && (
-                                                                    CLINIC_ROOMS.map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-black transition-colors">CALL {r.replace('Room ','R')}</button>)
-                                                                )}
+                                                                {/* ALWAYS SHOW ROOM CALL BUTTONS FOR FLEXIBILITY */}
+                                                                <div className="flex gap-1 flex-wrap justify-end">
+                                                                    {CLINIC_ROOMS.map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-black transition-colors">CALL {r.replace('Room ','R')}</button>)}
+                                                                </div>
+                                                                
+                                                                {/* CONTEXT ACTIONS */}
                                                                 {p.status === 'calling' && (
                                                                     <>
-                                                                        <button onClick={() => updatePatient(p.id, 'calling', p.loc, true)} className="bg-red-500 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-red-600 transition-colors animate-pulse">RE-CALL</button>
                                                                         <button onClick={() => updatePatient(p.id, 'consulting', p.loc, false)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-green-700 transition-colors">IN ROOM</button>
                                                                         <button onClick={() => updatePatient(p.id, 'pending', 'Waiting Area', false)} className="bg-orange-500 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-orange-600 transition-colors">PENDING</button>
                                                                     </>
                                                                 )}
-                                                                {p.status === 'consulting' && (
+                                                                {(p.status === 'calling' || p.status === 'consulting') && (
                                                                     <button onClick={() => updatePatient(p.id, 'collecting', 'Pharmacy', false)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-emerald-800 transition-colors">TO DISP</button>
                                                                 )}
                                                             </>
