@@ -68,7 +68,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- ISOLATED CLOCK (Performance) ---
+        // --- PERFORMANCE OPTIMIZED CLOCK ---
         const ClockDisplay = React.memo(() => {
             const [now, setNow] = React.useState(new Date());
             React.useEffect(() => {
@@ -140,7 +140,7 @@
 
                 const unsub = db.collection("branches").doc(branch).collection("queue")
                     .orderBy("time", "desc")
-                    .limit(150)
+                    .limit(150) // Performance Limit
                     .onSnapshot(snap => {
                         setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     });
@@ -180,7 +180,7 @@
                 }).catch(e => console.log("Audio Error:", e));
             };
 
-            // Watcher
+            // Watcher with Stale Check
             React.useEffect(() => {
                 const activeCallers = queue.filter(p => p.callTrigger);
                 const caller = activeCallers.sort((a,b) => b.callTrigger - a.callTrigger)[0];
@@ -210,6 +210,7 @@
             };
 
             const updatePatient = (id, s, l, triggerCall = false) => {
+                // Time updates on EVERY action to ensure "Latest Action" sorting works
                 const data = { status: s, loc: l, time: Date.now(), sortOrder: s === 'finished' ? 0 : 1 };
                 if (triggerCall) { 
                     data.callTrigger = Date.now(); 
@@ -394,10 +395,12 @@
                                                     <div className="flex gap-1 flex-wrap justify-end max-w-[50%]">
                                                         {view === 'doc' ? (
                                                             <>
-                                                                {/* ALWAYS SHOW ROOM CALL BUTTONS FOR FLEXIBILITY */}
-                                                                <div className="flex gap-1 flex-wrap justify-end">
-                                                                    {CLINIC_ROOMS.map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-black transition-colors">CALL {r.replace('Room ','R')}</button>)}
-                                                                </div>
+                                                                {/* ALWAYS SHOW ROOM CALL BUTTONS - FLAT LAYOUT */}
+                                                                {CLINIC_ROOMS.map((r,i) => (
+                                                                    <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-black transition-colors uppercase">
+                                                                        CALL {r.replace('Room ','R')}
+                                                                    </button>
+                                                                ))}
                                                                 
                                                                 {/* CONTEXT ACTIONS */}
                                                                 {p.status === 'calling' && (
@@ -406,7 +409,8 @@
                                                                         <button onClick={() => updatePatient(p.id, 'pending', 'Waiting Area', false)} className="bg-orange-500 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-orange-600 transition-colors">PENDING</button>
                                                                     </>
                                                                 )}
-                                                                {(p.status === 'calling' || p.status === 'consulting') && (
+                                                                {/* TO DISP: SHOW IF CALLING, CONSULTING, OR PENDING */}
+                                                                {(p.status === 'calling' || p.status === 'consulting' || p.status === 'pending') && (
                                                                     <button onClick={() => updatePatient(p.id, 'collecting', 'Pharmacy', false)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-emerald-800 transition-colors">TO DISP</button>
                                                                 )}
                                                             </>
