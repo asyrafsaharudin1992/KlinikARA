@@ -34,6 +34,8 @@
 
         /* UI Utils */
         .glass-panel { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* SCROLLBAR UTILITIES */
         .custom-scrollbar { overflow-y: auto; overflow-x: hidden; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
@@ -43,7 +45,17 @@
         
         /* Grid Layouts */
         .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 70px); gap: 20px; padding: 20px; box-sizing: border-box; }
-        .tv-grid { display: grid; grid-template-columns: 1.6fr 1fr; height: calc(100vh - 115px); gap: 20px; padding: 20px; box-sizing: border-box; overflow: hidden; transform-origin: top center; transition: transform 0.3s ease; }
+        .tv-grid { 
+            display: grid; 
+            grid-template-columns: 1.6fr 1fr; 
+            height: calc(100vh - 115px); 
+            gap: 20px; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            overflow: hidden; 
+            transform-origin: top center; 
+            transition: transform 0.2s ease-out;
+        }
     </style>
 </head>
 <body>
@@ -126,22 +138,24 @@
                     chimeRef.current.onended = () => {
                         chimeRef.current.onended = null; // Prevent loop
                         setTimeout(() => {
-                            // 2. Announcement (Location Only)
+                            // 2. Announce (Location Only)
                             const baseMessage = `Attention please. Number ${num}. Please proceed to ${loc}.`;
                             const fullMessage = `${baseMessage} I repeat. ${baseMessage}`;
                             
                             const msg = new SpeechSynthesisUtterance(fullMessage);
                             
-                            // Female Voice Priority
+                            // STRICT FEMALE VOICE SELECTION
                             const femaleVoice = availableVoices.find(v => v.name === 'Google US English') || 
                                               availableVoices.find(v => v.name.includes('Zira')) || 
                                               availableVoices.find(v => v.name.includes('Samantha')) ||
-                                              availableVoices.find(v => v.name.includes('Female'));
+                                              availableVoices.find(v => v.name.toLowerCase().includes('female')) ||
+                                              availableVoices.find(v => v.lang === 'en-US'); // Fallback
+                                              
                             if (femaleVoice) msg.voice = femaleVoice;
                             
                             msg.lang = 'en-US';
                             msg.rate = voiceSpeed;
-                            msg.pitch = 1.1; // Slightly higher pitch for female voice
+                            msg.pitch = 1.1;
                             
                             msg.onend = () => {
                                 // 3. Outro Chime & End
@@ -201,6 +215,7 @@
                 return sortNewest ? b.time - a.time : a.time - b.time;
             });
 
+            // Pharmacy Filter logic
             const pharmacyQueue = sortedQueue.filter(p => p.status === 'collecting');
 
             // --- RENDER HELPERS ---
@@ -210,14 +225,14 @@
                         <h3 className="font-bold text-xl mb-6 text-slate-800">System Controls</h3>
                         <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Voice Speed ({voiceSpeed}x)</label>
                         <input type="range" min="0.5" max="1.5" step="0.05" value={voiceSpeed} onChange={e => setVoiceSpeed(parseFloat(e.target.value))} className="w-full mb-6 accent-blue-600" />
-                        <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">TV Scale ({uiScale}x)</label>
+                        <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">TV Display Scale ({uiScale}x)</label>
                         <input type="range" min="0.8" max="1.2" step="0.05" value={uiScale} onChange={e => setUiScale(parseFloat(e.target.value))} className="w-full mb-8 accent-blue-600" />
                         <button onClick={() => setShowSettings(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold">CLOSE</button>
                     </div>
                 </div>
             );
 
-            // 3-COLUMN SIDEBAR MONITOR (Enhanced Visibility on TV)
+            // 3-COLUMN SIDEBAR MONITOR
             const LiveMonitor = ({ isDark }) => (
                 <div className={`rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'glass-panel text-white' : 'bg-white'}`}>
                     <div className={`p-4 font-bold border-b text-[10px] uppercase tracking-widest flex justify-between ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}`}>
@@ -225,7 +240,6 @@
                         {!isDark && <button onClick={() => setSortNewest(!sortNewest)} className="text-blue-600 hover:underline">{sortNewest ? 'Newest' : 'Oldest'}</button>}
                     </div>
                     
-                    {/* COLUMN HEADERS */}
                     <div className={`grid grid-cols-[0.8fr_1.5fr_1fr] px-4 py-2 text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-white/30' : 'text-slate-400 bg-slate-50 border-b border-slate-100'}`}>
                         <div>No.</div>
                         <div>Patient Name</div>
@@ -235,13 +249,8 @@
                     <div className="flex-1 custom-scrollbar">
                         {sortedQueue.map(p => (
                             <div key={p.id} className={`grid grid-cols-[0.8fr_1.5fr_1fr] items-center p-4 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                {/* NUMBER - HUGE ON TV */}
                                 <span className={`${isDark ? 'text-4xl' : 'text-xl'} font-black`}>#{p.num}</span>
-                                
-                                {/* NAME - BIGGER ON TV */}
                                 <span className={`${isDark ? 'text-xl' : 'text-[11px]'} font-bold uppercase truncate pr-2 ${isDark ? 'text-white/90' : 'text-slate-700'}`}>{p.name || '-'}</span>
-                                
-                                {/* LOCATION - BIGGER ON TV */}
                                 <span className={`${isDark ? 'text-lg px-4 py-2' : 'text-[9px] px-2 py-1'} font-black rounded uppercase text-center ml-auto min-w-[80px] ${p.status === 'finished' ? 'bg-slate-200 text-slate-500' : (isDark ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600')}`}>
                                     {p.loc}
                                 </span>
