@@ -24,69 +24,30 @@
         .ticker-move { white-space: nowrap; animation: marquee 30s linear infinite; display: inline-block; padding-left: 100%; }
         
         @keyframes flash-call {
-            0%, 100% { opacity: 1; color: white; transform: scale(1); text-shadow: 0 0 20px rgba(255,255,255,0.5); }
-            50% { opacity: 0.8; color: #60a5fa; transform: scale(1.02); text-shadow: 0 0 40px rgba(96, 165, 250, 0.8); }
+            0%, 100% { opacity: 1; color: white; transform: scale(1); text-shadow: 0 0 30px rgba(255,255,255,0.8); }
+            50% { opacity: 1; color: #60a5fa; transform: scale(1.02); text-shadow: 0 0 60px rgba(96, 165, 250, 1); }
         }
         .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
         
-        @keyframes pulse-new { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.95); } }
-        .animate-new { animation: pulse-new 1s ease-in-out infinite; }
-
         /* UI Utils */
-        .glass-panel { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        /* Darker glass for better contrast */
+        .glass-panel { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        /* SCROLLBAR UTILITIES */
         .custom-scrollbar { overflow-y: auto; overflow-x: hidden; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* Navigation Bar */
+        /* Layouts */
         .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 50; position: relative; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .nav-light { background: white; border-bottom: 2px solid #e2e8f0; }
         .nav-dark { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.1); }
-
-        /* Grid Layouts */
         .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 90px); gap: 20px; padding: 20px; box-sizing: border-box; }
-        
-        /* Ticker Styling */
-        .ticker-bar {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 60px;
-            background-color: #000000;
-            color: #fbbf24;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-            font-size: 1.5rem;
-            font-weight: 800;
-            border-top: 4px solid #d97706;
-            z-index: 50;
-        }
-
-        /* TV SCALER WRAPPER */
-        .tv-wrapper-scaled {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            transform-origin: top center;
-            transition: transform 0.2s ease-out;
-        }
-
-        .tv-grid-inner {
-            display: grid; 
-            grid-template-columns: 1.6fr 1fr; 
-            flex: 1; 
-            gap: 20px; 
-            padding: 40px; 
-            box-sizing: border-box; 
-            overflow: hidden; 
-        }
+        .tv-wrapper-scaled { width: 100%; height: 100%; display: flex; flex-direction: column; transform-origin: top center; transition: transform 0.2s ease-out; }
+        .tv-grid-inner { display: grid; grid-template-columns: 1.6fr 1fr; flex: 1; gap: 20px; padding: 30px; box-sizing: border-box; overflow: hidden; }
+        .ticker-bar { position: absolute; bottom: 0; width: 100%; height: 60px; background-color: #000000; color: #fbbf24; display: flex; align-items: center; overflow: hidden; font-size: 1.5rem; font-weight: 800; border-top: 4px solid #d97706; z-index: 50; }
     </style>
 </head>
 <body>
@@ -105,43 +66,74 @@
         };
 
         const CUSTOM_CHIME_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+        // CTO NOTE: Add new rooms here to auto-generate buttons
+        const CLINIC_ROOMS = ['Room 1', 'Room 2', 'Room 3', 'Nebuliser'];
 
-        // --- APP LOGIC ---
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // --- ISOLATED CLOCK (Performance) ---
+        const ClockDisplay = React.memo(() => {
+            const [now, setNow] = React.useState(new Date());
+            React.useEffect(() => {
+                const t = setInterval(() => setNow(new Date()), 1000);
+                return () => clearInterval(t);
+            }, []);
+
+            return (
+                <div className="text-center">
+                    <div className="text-7xl font-black text-blue-300 drop-shadow-md">
+                        {now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}
+                    </div>
+                    <div className="text-2xl font-bold text-white/80 uppercase mt-2 tracking-widest">
+                        {now.toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}
+                    </div>
+                    <div className="text-lg font-bold text-emerald-400 uppercase mt-1 tracking-widest">
+                        {new Intl.DateTimeFormat('en-US-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(now)}
+                    </div>
+                </div>
+            );
+        });
+
+        // --- STATUS BADGE ---
+        const StatusBadge = React.memo(({ status }) => {
+            let color = "bg-slate-100 text-slate-500";
+            let label = status;
+            if(status === 'calling') { color = "bg-red-100 text-red-600 animate-pulse"; label = "CALLING"; }
+            if(status === 'consulting') { color = "bg-green-100 text-green-700"; label = "IN ROOM"; }
+            if(status === 'pending') { color = "bg-orange-100 text-orange-600"; label = "PENDING"; }
+            if(status === 'collecting') { color = "bg-blue-100 text-blue-600"; label = "PHARMACY"; }
+            if(status === 'finished') { color = "bg-gray-200 text-gray-500"; label = "DONE"; }
+            
+            return <span className={`text-[9px] font-black px-2 py-1 rounded uppercase text-center min-w-[70px] ${color}`}>{label}</span>;
+        });
+
         function App() {
+            // State
             const [view, setView] = React.useState('reg');
             const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
             const [queue, setQueue] = React.useState([]);
             
-            // Reg Form State
             const [inputNum, setInputNum] = React.useState('');
             const [inputName, setInputName] = React.useState('');
             
-            // Settings
             const [voiceSpeed, setVoiceSpeed] = React.useState(parseFloat(localStorage.getItem('voice_speed')) || 0.85);
             const [uiScale, setUiScale] = React.useState(parseFloat(localStorage.getItem('ui_scale')) || 1.0);
             const [showSettings, setShowSettings] = React.useState(false);
-            
             const [sortNewest, setSortNewest] = React.useState(localStorage.getItem('sort_order') !== 'oldest');
 
-            // System State
             const [audioOn, setAudioOn] = React.useState(false);
             const [isCalling, setIsCalling] = React.useState(false); 
-            const [now, setNow] = React.useState(new Date());
             const [availableVoices, setAvailableVoices] = React.useState([]);
             
-            const lastCallTrigger = React.useRef(null);
+            const lastCallId = React.useRef(null);
             const chimeRef = React.useRef(new Audio(CUSTOM_CHIME_URL));
 
-            // --- EFFECTS ---
+            // Setup
             React.useEffect(() => {
-                const t = setInterval(() => setNow(new Date()), 1000);
                 const loadVoices = () => setAvailableVoices(window.speechSynthesis.getVoices());
                 loadVoices();
                 window.speechSynthesis.onvoiceschanged = loadVoices;
-                return () => clearInterval(t);
             }, []);
 
             React.useEffect(() => {
@@ -151,20 +143,18 @@
                 localStorage.setItem('sort_order', sortNewest ? 'newest' : 'oldest');
 
                 const unsub = db.collection("branches").doc(branch).collection("queue")
-                    .orderBy("time", "desc").onSnapshot(snap => {
+                    .orderBy("time", "desc")
+                    .limit(150) // Performance Limit
+                    .onSnapshot(snap => {
                         setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     });
                 return () => unsub();
             }, [branch, voiceSpeed, uiScale, sortNewest]);
 
-            // --- AUDIO SEQUENCE ---
+            // Audio Logic
             const runSequence = (num, loc) => {
                 setIsCalling(true);
-                
-                // STOP ANIMATION AFTER 10 SECONDS
-                setTimeout(() => {
-                    setIsCalling(false);
-                }, 10000);
+                setTimeout(() => setIsCalling(false), 10000); // 10s Blink Limit
                 
                 window.speechSynthesis.cancel();
                 chimeRef.current.pause();
@@ -176,19 +166,12 @@
                         setTimeout(() => {
                             const baseMessage = `Attention please. Number ${num}. Please proceed to ${loc}.`;
                             const fullMessage = `${baseMessage} I repeat. ${baseMessage}`;
-                            
                             const msg = new SpeechSynthesisUtterance(fullMessage);
-                            
-                            const femaleVoice = availableVoices.find(v => v.name === 'Google US English') || 
-                                              availableVoices.find(v => v.name.includes('Zira')) || 
-                                              availableVoices.find(v => v.name.includes('Samantha')) ||
-                                              availableVoices.find(v => v.name.toLowerCase().includes('female'));
+                            const femaleVoice = availableVoices.find(v => v.name === 'Google US English') || availableVoices.find(v => v.name.includes('Zira')) || availableVoices.find(v => v.name.toLowerCase().includes('female'));
                             if (femaleVoice) msg.voice = femaleVoice;
-                            
                             msg.lang = 'en-US';
                             msg.rate = voiceSpeed;
                             msg.pitch = 1.1;
-                            
                             msg.onend = () => {
                                 setTimeout(() => {
                                     chimeRef.current.currentTime = 0;
@@ -201,22 +184,26 @@
                 }).catch(e => console.log("Audio Error:", e));
             };
 
-            // --- WATCHER ---
+            // Watcher with Stale Check
             React.useEffect(() => {
-                // Filter out 'finished' patients so they don't trigger the display/audio
-                // unless they are re-called (which changes their status to calling)
-                const activeCallers = queue.filter(p => p.callTrigger && p.status !== 'finished');
+                const activeCallers = queue.filter(p => p.callTrigger);
                 const caller = activeCallers.sort((a,b) => b.callTrigger - a.callTrigger)[0];
 
                 if (view === 'tv' && audioOn && caller) {
-                    if (caller.callTrigger !== lastCallTrigger.current) {
-                        lastCallTrigger.current = caller.callTrigger;
-                        runSequence(caller.num, caller.loc);
+                    if (caller.callTrigger !== lastCallId.current) {
+                        const isFreshCall = (Date.now() - caller.callTrigger) < 15000;
+                        lastCallId.current = caller.callTrigger; 
+
+                        if (isFreshCall) {
+                            if (caller.status === 'calling' || caller.status === 'collecting') {
+                                runSequence(caller.num, caller.loc);
+                            }
+                        }
                     }
                 }
             }, [queue, view, audioOn]);
 
-            // --- ACTIONS ---
+            // Actions
             const qRef = db.collection("branches").doc(branch).collection("queue");
 
             const registerPatient = () => {
@@ -227,40 +214,42 @@
             };
 
             const updatePatient = (id, s, l, triggerCall = false) => {
-                const data = { 
-                    status: s, 
-                    loc: l, 
-                    time: Date.now(), 
-                    sortOrder: s === 'finished' ? 0 : 1 
-                };
-                
+                const data = { status: s, loc: l, time: Date.now(), sortOrder: s === 'finished' ? 0 : 1 };
                 if (triggerCall) { 
                     data.callTrigger = Date.now(); 
                     data.isNewToPharmacy = false; 
-                }
-                else if (s === 'collecting') { 
+                } else if (s === 'collecting') { 
                     data.isNewToPharmacy = true; 
                 } 
-                
                 qRef.doc(id).update(data);
             };
 
             const resetAll = () => {
-                if(confirm(`⚠ CRITICAL: DELETE ALL DATA FOR ${branch}?`)) {
-                    qRef.get().then(s => s.forEach(d => d.ref.delete()));
-                }
+                if(confirm(`Reset data for ${branch}?`)) qRef.get().then(s => s.forEach(d => d.ref.delete()));
             };
 
-            // Sorting Logic
-            const sortedQueue = [...queue].sort((a, b) => {
-                if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (b.sortOrder || 0) - (a.sortOrder || 0);
-                return sortNewest ? b.time - a.time : a.time - b.time;
-            });
+            // Memoized Lists
+            // 1. Admin/Pharmacy List (Respects "sortNewest" and groups Active vs Finished)
+            const sortedQueue = React.useMemo(() => {
+                return [...queue].sort((a, b) => {
+                    if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (b.sortOrder || 0) - (a.sortOrder || 0);
+                    return sortNewest ? b.time - a.time : a.time - b.time;
+                });
+            }, [queue, sortNewest]);
 
-            // Pharmacy Filter
-            const pharmacyQueue = sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished');
+            // 2. Pharmacy Filter
+            const pharmacyQueue = React.useMemo(() => {
+                return sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished');
+            }, [sortedQueue]);
 
-            // --- COMPONENTS ---
+            // 3. Right Monitor List (Strictly Chronological - Absolute latest on top)
+            const monitorQueue = React.useMemo(() => {
+                return [...queue].sort((a,b) => {
+                    return b.time - a.time; // Strict time sort, ignoring status grouping
+                });
+            }, [queue]);
+
+            // Components
             const SettingsModal = () => (
                 <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm">
                     <div className="bg-white p-8 rounded-3xl w-96 shadow-2xl">
@@ -274,28 +263,24 @@
                 </div>
             );
 
-            // 3-COLUMN SIDEBAR MONITOR
             const LiveMonitor = ({ isDark }) => (
                 <div className={`rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'glass-panel text-white' : 'bg-white'}`}>
                     <div className={`p-4 font-bold border-b text-[10px] uppercase tracking-widest flex justify-between ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}`}>
                         <span>{branch} Monitor</span>
-                        {!isDark && <button onClick={() => setSortNewest(!sortNewest)} className="text-blue-600 hover:underline">{sortNewest ? 'Latest Top' : 'Oldest Top'}</button>}
                     </div>
-                    
-                    <div className={`grid grid-cols-[0.8fr_1.5fr_1fr] px-4 py-2 text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-white/30' : 'text-slate-400 bg-slate-50 border-b border-slate-100'}`}>
+                    <div className={`grid grid-cols-[0.6fr_1.5fr_1fr_1fr] px-4 py-3 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-white/50' : 'text-slate-400 bg-slate-50 border-b border-slate-100'}`}>
                         <div>No.</div>
-                        <div>Patient Name</div>
+                        <div>Name</div>
+                        <div className="text-center">Status</div>
                         <div className="text-right">Location</div>
                     </div>
-
                     <div className="flex-1 custom-scrollbar">
-                        {sortedQueue.map(p => (
-                            <div key={p.id} className={`grid grid-cols-[0.8fr_1.5fr_1fr] items-center p-4 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                <span className={`${isDark ? 'text-4xl' : 'text-xl'} font-black`}>#{p.num}</span>
-                                <span className={`${isDark ? 'text-xl' : 'text-[11px]'} font-bold uppercase truncate pr-2 ${isDark ? 'text-white/90' : 'text-slate-700'}`}>{p.name || '-'}</span>
-                                <span className={`${isDark ? 'text-lg px-4 py-2' : 'text-[9px] px-2 py-1'} font-black rounded uppercase text-center ml-auto min-w-[80px] ${p.status === 'finished' ? 'bg-slate-200 text-slate-500' : (isDark ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-600')}`}>
-                                    {p.loc}
-                                </span>
+                        {monitorQueue.map(p => (
+                            <div key={p.id} className={`grid grid-cols-[0.6fr_1.5fr_1fr_1fr] items-center p-4 border-b ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
+                                <span className={`${isDark ? 'text-4xl text-white' : 'text-xl'} font-black drop-shadow-sm`}>#{p.num}</span>
+                                <span className={`${isDark ? 'text-xl text-white' : 'text-[11px]'} font-bold uppercase truncate pr-2 tracking-wide`}>{p.name || '-'}</span>
+                                <div className="flex justify-center"><StatusBadge status={p.status} /></div>
+                                <span className={`text-right font-bold uppercase text-[12px] ${isDark?'text-emerald-300':'text-slate-500'}`}>{p.loc}</span>
                             </div>
                         ))}
                     </div>
@@ -325,9 +310,7 @@
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={() => setShowSettings(true)} className={`p-4 rounded-xl ${view === 'tv' ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            </button>
+                            <button onClick={() => setShowSettings(true)} className={`p-4 rounded-xl ${view === 'tv' ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>⚙</button>
                         </div>
                     </nav>
 
@@ -336,30 +319,41 @@
                         <div className="relative h-[calc(100vh-90px)] overflow-hidden">
                             <div className="tv-wrapper-scaled" style={{ transform: `scale(${uiScale})` }}>
                                 <div className="tv-grid-inner">
-                                    <div className="flex flex-col items-center justify-center relative glass-panel rounded-[40px]">
+                                    {/* MAIN CALLER DISPLAY */}
+                                    <div className="flex flex-col items-center justify-center relative glass-panel rounded-[40px] p-8 gap-4">
                                         {!audioOn && (
                                             <div onClick={() => { setAudioOn(true); chimeRef.current.play(); }} className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center rounded-[40px] cursor-pointer backdrop-blur-md">
                                                 <button className="px-12 py-6 bg-blue-600 text-white rounded-full font-black text-2xl shadow-2xl animate-pulse pointer-events-none">TAP TO ACTIVATE</button>
                                             </div>
                                         )}
-                                        <span className="text-blue-400 text-4xl font-black uppercase tracking-[0.3em] mb-4">Now Calling</span>
-                                        {/* FILTER: Must match watcher (hide finished) */}
-                                        <div className={`text-[22vw] font-black text-white leading-none ${isCalling ? 'animate-calling' : ''}`}>
-                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '----'}
+                                        <span className="text-blue-300 text-3xl font-black uppercase tracking-[0.3em] absolute top-6">Now Calling</span>
+                                        
+                                        {/* OPTIMIZED NUMBER DISPLAY - 26vh Fixed Height */}
+                                        <div className={`font-black text-white leading-none drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)] ${isCalling ? 'animate-calling' : ''}`} style={{ fontSize: '26vh', marginTop: '20px' }}>
+                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '---'}
                                         </div>
-                                        <div className="text-5xl font-bold text-white/60 uppercase mb-8">{queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || ''}</div>
-                                        <div className="text-6xl font-bold text-emerald-400 uppercase">{queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.loc || 'Standby'}</div>
+                                        
+                                        {/* NAME DISPLAY - High Contrast White */}
+                                        <div className="text-5xl font-bold text-white uppercase line-clamp-1 text-center w-full px-4 drop-shadow-md">
+                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || '...'}
+                                        </div>
+                                        
+                                        {/* LOCATION DISPLAY */}
+                                        <div className="text-6xl font-black text-emerald-400 uppercase text-center w-full drop-shadow-lg mt-2">
+                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.loc || 'Standby'}
+                                        </div>
                                     </div>
+
+                                    {/* RIGHT PANEL */}
                                     <div className="flex flex-col gap-6">
-                                        <div className="glass-panel p-8 rounded-[40px] text-center shadow-xl">
-                                            <div className="text-7xl font-black text-blue-300">{now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
-                                            <div className="text-2xl font-bold text-white/50 uppercase mt-2">{now.toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
-                                            <div className="text-lg font-bold text-emerald-500/80 uppercase mt-1 tracking-widest">{new Intl.DateTimeFormat('en-US-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(now)}</div>
+                                        <div className="glass-panel p-6 rounded-[40px] text-center shadow-2xl">
+                                            <ClockDisplay />
                                         </div>
                                         <LiveMonitor isDark={true} />
                                     </div>
                                 </div>
-
+                                
+                                {/* TICKER */}
                                 <div className="ticker-bar">
                                     <div className="ticker-move">Selamat datang ke KLINIK ARA 24 JAM. Mohon bersabar sehingga nombor dipanggil. Moga segala urusan tuan puan dimudahkan amin.</div>
                                 </div>
@@ -368,35 +362,20 @@
                     ) : (
                         <div className="admin-layout">
                             <div className="bg-white rounded-[30px] border shadow-sm flex flex-col overflow-hidden">
-                                
                                 {view === 'reg' && (
-                                    <div className="flex flex-col h-full">
-                                        <div className="bg-slate-950 text-white px-6 py-4 flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-slate-300"><path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" /></svg>
+                                    <div className="flex flex-col h-full items-center justify-center p-8 overflow-y-auto custom-scrollbar">
+                                        <div className="w-full max-w-sm space-y-6">
+                                            <h1 className="text-4xl font-black text-slate-900 mb-10 text-center">Registration</h1>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Patient Name</label>
+                                                <input placeholder="Ex: David Miller" value={inputName} onChange={e => setInputName(e.target.value)} className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-blue-500 transition" />
                                             </div>
-                                            <span className="font-bold tracking-widest text-xs uppercase">Front Desk Portal</span>
-                                        </div>
-                                        <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto custom-scrollbar">
-                                            <div className="text-center mb-10">
-                                                <h1 className="text-4xl font-black text-slate-900 mb-1 tracking-tight">Registration</h1>
-                                                <p className="text-[10px] font-bold text-slate-400 tracking-[0.3em] uppercase">Manual Queue Entry</p>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Assigned Number</label>
+                                                <input type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} className="w-full p-5 bg-white border border-slate-200 rounded-2xl text-6xl font-black text-slate-300 text-center outline-none focus:border-blue-500 transition no-spinner" />
                                             </div>
-                                            <div className="w-full max-w-sm space-y-6">
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Patient Name</label>
-                                                    <div className="relative">
-                                                        <input placeholder="Ex: David Miller" value={inputName} onChange={e => setInputName(e.target.value)} className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-blue-500 transition" />
-                                                        <div className="absolute right-2 top-2 bottom-2 bg-slate-200/50 text-slate-500 text-[10px] font-bold px-3 rounded-lg flex items-center uppercase tracking-wider">Preview</div>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-center">Assigned Number</label>
-                                                    <input type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} className="w-full p-5 bg-white border border-slate-200 rounded-2xl text-6xl font-black text-slate-300 text-center outline-none focus:border-blue-500 focus:text-slate-900 transition placeholder-slate-200 no-spinner" />
-                                                </div>
-                                                <button onClick={registerPatient} className="w-full py-5 bg-slate-950 text-white rounded-full font-black text-sm hover:scale-[1.02] active:scale-95 transition shadow-2xl shadow-slate-200 uppercase tracking-widest">REGISTER PATIENT</button>
-                                                <button onClick={resetAll} className="w-full py-3 border border-slate-100 text-slate-300 rounded-full font-bold text-[10px] hover:border-red-100 hover:text-red-400 hover:bg-red-50 transition uppercase tracking-widest">Reset All Branch Data</button>
-                                            </div>
+                                            <button onClick={registerPatient} className="w-full py-5 bg-slate-950 text-white rounded-full font-black text-sm transition hover:scale-[1.02] shadow-xl">REGISTER PATIENT</button>
+                                            <button onClick={resetAll} className="w-full py-3 border border-slate-100 text-slate-300 rounded-full font-bold text-[10px] hover:text-red-400 transition">Reset All Branch Data</button>
                                         </div>
                                     </div>
                                 )}
@@ -416,13 +395,28 @@
                                                             {view === 'pharmacy' && p.isNewToPharmacy && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-new">NEW</span>}
                                                         </div>
                                                         {p.name && <span className="text-[10px] font-bold text-blue-600 uppercase">{p.name}</span>}
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase">Loc: {p.loc}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <StatusBadge status={p.status} />
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase">{p.loc}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex gap-1">
+                                                    
+                                                    <div className="flex gap-1 flex-wrap justify-end">
                                                         {view === 'doc' ? (
                                                             <>
-                                                                {['Room 1', 'Room 2'].map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-black transition-colors">CALL R{i+1}</button>)}
-                                                                <button onClick={() => updatePatient(p.id, 'collecting', p.loc, false)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-emerald-800 transition-colors">TO DISP</button>
+                                                                {(p.status === 'waiting' || p.status === 'pending' || p.status === 'finished') && (
+                                                                    CLINIC_ROOMS.map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-black transition-colors">CALL {r.replace('Room ','R')}</button>)
+                                                                )}
+                                                                {p.status === 'calling' && (
+                                                                    <>
+                                                                        <button onClick={() => updatePatient(p.id, 'calling', p.loc, true)} className="bg-red-500 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-red-600 transition-colors animate-pulse">RE-CALL</button>
+                                                                        <button onClick={() => updatePatient(p.id, 'consulting', p.loc, false)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-green-700 transition-colors">IN ROOM</button>
+                                                                        <button onClick={() => updatePatient(p.id, 'pending', 'Waiting Area', false)} className="bg-orange-500 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-orange-600 transition-colors">PENDING</button>
+                                                                    </>
+                                                                )}
+                                                                {p.status === 'consulting' && (
+                                                                    <button onClick={() => updatePatient(p.id, 'collecting', 'Pharmacy', false)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-emerald-800 transition-colors">TO DISP</button>
+                                                                )}
                                                             </>
                                                         ) : (
                                                             <>
@@ -434,14 +428,11 @@
                                                     </div>
                                                 </div>
                                             ))}
-                                            {view === 'pharmacy' && pharmacyQueue.length === 0 && (
-                                                <div className="p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No patients waiting for collection</div>
-                                            )}
+                                            {view === 'pharmacy' && pharmacyQueue.length === 0 && <div className="p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No patients</div>}
                                         </div>
                                     </div>
                                 )}
                             </div>
-
                             <LiveMonitor isDark={false} />
                         </div>
                     )}
