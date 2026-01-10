@@ -159,23 +159,25 @@
             // --- AUDIO SEQUENCE ---
             const runSequence = (num, loc) => {
                 setIsCalling(true);
-                window.speechSynthesis.cancel();
                 
+                // STOP ANIMATION AFTER 10 SECONDS
+                setTimeout(() => {
+                    setIsCalling(false);
+                }, 10000);
+                
+                window.speechSynthesis.cancel();
                 chimeRef.current.pause();
                 chimeRef.current.currentTime = 0;
                 
-                // 1. Play Intro Chime
                 chimeRef.current.play().then(() => {
                     chimeRef.current.onended = () => {
-                        chimeRef.current.onended = null; // Prevent loop
+                        chimeRef.current.onended = null;
                         setTimeout(() => {
-                            // 2. Announce
                             const baseMessage = `Attention please. Number ${num}. Please proceed to ${loc}.`;
                             const fullMessage = `${baseMessage} I repeat. ${baseMessage}`;
                             
                             const msg = new SpeechSynthesisUtterance(fullMessage);
                             
-                            // Female Voice Priority
                             const femaleVoice = availableVoices.find(v => v.name === 'Google US English') || 
                                               availableVoices.find(v => v.name.includes('Zira')) || 
                                               availableVoices.find(v => v.name.includes('Samantha')) ||
@@ -187,11 +189,9 @@
                             msg.pitch = 1.1;
                             
                             msg.onend = () => {
-                                // 3. Outro Chime & End
                                 setTimeout(() => {
                                     chimeRef.current.currentTime = 0;
                                     chimeRef.current.play(); 
-                                    setTimeout(() => setIsCalling(false), 2000);
                                 }, 300);
                             };
                             window.speechSynthesis.speak(msg);
@@ -202,8 +202,6 @@
 
             // --- WATCHER ---
             React.useEffect(() => {
-                // Filter all calls, EVEN IF STATUS IS FINISHED. 
-                // Rely solely on trigger timestamp change.
                 const activeCallers = queue.filter(p => p.callTrigger);
                 const caller = activeCallers.sort((a,b) => b.callTrigger - a.callTrigger)[0];
 
@@ -226,12 +224,17 @@
             };
 
             const updatePatient = (id, s, l, triggerCall = false) => {
-                // If triggering call, reset sortOrder to 1 to bring back to top (even if was finished)
-                const data = { status: s, loc: l, sortOrder: s === 'finished' ? 0 : 1 };
+                // IMPORTANT: We update 'time' to Date.now() on EVERY action.
+                // This ensures the "Latest Action" logic on the Right Monitor works correctly.
+                const data = { 
+                    status: s, 
+                    loc: l, 
+                    time: Date.now(), 
+                    sortOrder: s === 'finished' ? 0 : 1 
+                };
                 
                 if (triggerCall) { 
                     data.callTrigger = Date.now(); 
-                    data.time = Date.now(); // Also update time to ensure it bubbles to top of "Latest Action" list
                     data.isNewToPharmacy = false; 
                 }
                 else if (s === 'collecting') { 
@@ -247,14 +250,24 @@
                 }
             };
 
-            // Sorting Logic
-            const sortedQueue = [...queue].sort((a, b) => {
+            // --- SORTING LOGIC ---
+            
+            // 1. ADMIN QUEUE (Doc/Pharm): Respects the user's sort preference
+            const adminQueue = [...queue].sort((a, b) => {
                 if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (b.sortOrder || 0) - (a.sortOrder || 0);
                 return sortNewest ? b.time - a.time : a.time - b.time;
             });
 
-            // Pharmacy Filter
-            const pharmacyQueue = sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished');
+            // 2. MONITOR QUEUE (Right Panel): ALWAYS Latest Action on Top (Newest time first)
+            const monitorQueue = [...queue].sort((a, b) => {
+                // Still keep active above finished
+                if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (b.sortOrder || 0) - (a.sortOrder || 0);
+                // But always sort by time descending (newest at top)
+                return b.time - a.time;
+            });
+
+            // Pharmacy Filter (uses admin sorting preference)
+            const pharmacyQueue = adminQueue.filter(p => p.status === 'collecting' || p.status === 'finished');
 
             // --- COMPONENTS ---
             const SettingsModal = () => (
@@ -270,12 +283,12 @@
                 </div>
             );
 
-            // 3-COLUMN SIDEBAR MONITOR
+            // 3-COLUMN SIDEBAR MONITOR (Uses monitorQueue)
             const LiveMonitor = ({ isDark }) => (
                 <div className={`rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'glass-panel text-white' : 'bg-white'}`}>
                     <div className={`p-4 font-bold border-b text-[10px] uppercase tracking-widest flex justify-between ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}`}>
                         <span>{branch} Monitor</span>
-                        {!isDark && <button onClick={() => setSortNewest(!sortNewest)} className="text-blue-600 hover:underline">{sortNewest ? 'Latest Top' : 'Oldest Top'}</button>}
+                        {/* Monitor is always "Latest Top", no button needed */}
                     </div>
                     
                     <div className={`grid grid-cols-[0.8fr_1.5fr_1fr] px-4 py-2 text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-white/30' : 'text-slate-400 bg-slate-50 border-b border-slate-100'}`}>
@@ -285,7 +298,7 @@
                     </div>
 
                     <div className="flex-1 custom-scrollbar">
-                        {sortedQueue.map(p => (
+                        {monitorQueue.map(p => (
                             <div key={p.id} className={`grid grid-cols-[0.8fr_1.5fr_1fr] items-center p-4 border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                                 <span className={`${isDark ? 'text-4xl' : 'text-xl'} font-black`}>#{p.num}</span>
                                 <span className={`${isDark ? 'text-xl' : 'text-[11px]'} font-bold uppercase truncate pr-2 ${isDark ? 'text-white/90' : 'text-slate-700'}`}>{p.name || '-'}</span>
@@ -340,7 +353,6 @@
                                         )}
                                         <span className="text-blue-400 text-4xl font-black uppercase tracking-[0.3em] mb-4">Now Calling</span>
                                         <div className={`text-[22vw] font-black text-white leading-none ${isCalling ? 'animate-calling' : ''}`}>
-                                            {/* Allow finished patients to show if they were the last called */}
                                             {queue.filter(p => p.callTrigger).sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '----'}
                                         </div>
                                         <div className="text-5xl font-bold text-white/60 uppercase mb-8">{queue.filter(p => p.callTrigger).sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || ''}</div>
@@ -398,55 +410,3 @@
                                 )}
 
                                 {(view === 'doc' || view === 'pharmacy') && (
-                                    <div className="flex flex-col h-full">
-                                        <div className={`p-4 flex justify-between items-center text-white font-black text-[10px] uppercase tracking-widest ${view === 'pharmacy' ? 'bg-emerald-900' : 'bg-slate-900'}`}>
-                                            <span>{branch} {view === 'pharmacy' ? 'Pharmacy' : 'Doctor'}</span>
-                                            <span>{view === 'pharmacy' ? 'Ready for Collection' : 'Patient Queue'}</span>
-                                        </div>
-                                        <div className="flex-1 custom-scrollbar">
-                                            {(view === 'pharmacy' ? pharmacyQueue : sortedQueue).map(p => (
-                                                <div key={p.id} className={`p-4 border-b flex items-center justify-between transition ${p.status === 'finished' ? 'bg-slate-100 opacity-50 grayscale' : 'bg-white'}`}>
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-3xl font-black">#{p.num}</span>
-                                                            {view === 'pharmacy' && p.isNewToPharmacy && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-new">NEW</span>}
-                                                        </div>
-                                                        {p.name && <span className="text-[10px] font-bold text-blue-600 uppercase">{p.name}</span>}
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase">Loc: {p.loc}</span>
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                        {view === 'doc' ? (
-                                                            <>
-                                                                {['Room 1', 'Room 2'].map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-black transition-colors">CALL R{i+1}</button>)}
-                                                                <button onClick={() => updatePatient(p.id, 'collecting', p.loc, false)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black hover:bg-emerald-800 transition-colors">TO DISP</button>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <button onClick={() => updatePatient(p.id, 'collecting', 'Medication Counter', true)} className="bg-emerald-600 text-white px-4 py-3 rounded-lg text-[9px] font-black hover:bg-emerald-800 transition-colors">CALL COUNTER</button>
-                                                                <button onClick={() => updatePatient(p.id, 'finished', 'Done', false)} className="bg-slate-800 text-white px-4 py-3 rounded-lg text-[9px] font-black hover:bg-black transition-colors">MARK DONE</button>
-                                                            </>
-                                                        )}
-                                                        <button onClick={() => { if(confirm("Remove?")) qRef.doc(p.id).delete(); }} className="text-slate-300 hover:text-red-500 px-2 font-black">✕</button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {view === 'pharmacy' && pharmacyQueue.length === 0 && (
-                                                <div className="p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No patients waiting for collection</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <LiveMonitor isDark={false} />
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
