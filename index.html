@@ -16,72 +16,63 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; overflow: hidden; height: 100vh; width: 100vw; }
         
-        /* 4K TV STYLES */
-        .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); height: 100vh; width: 100vw; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+        /* THE STABLE TV ENGINE */
+        .tv-screen { 
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
+            height: 100vh; width: 100vw; overflow: hidden; position: relative; 
+            display: flex; flex-direction: column;
+        }
+
+        .tv-body {
+            position: relative; flex: 1; display: flex; gap: 30px; padding: 30px;
+            padding-bottom: 90px; overflow: hidden; /* Hard lock to screen height */
+        }
+
+        /* FIXED LEFT PANEL */
+        .zone-left {
+            flex: 1.6; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 40px;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; /* LOCK TO TOP */
+            padding-top: 8vh;
+        }
+
+        .huge-number {
+            font-size: 32vh; font-weight: 900; line-height: 0.8; margin: 0;
+            color: white; text-shadow: 0 10px 60px rgba(0,0,0,0.5);
+        }
+
+        /* INDEPENDENT RIGHT PANEL */
+        .zone-right { flex: 1; height: 100%; display: flex; flex-direction: column; gap: 20px; overflow: hidden; }
+        .glass-box { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 40px; }
         
-        .tv-main-grid {
-            display: grid;
-            grid-template-columns: 1.6fr 1fr;
-            gap: 30px;
-            padding: 30px;
-            flex: 1;
-            height: calc(100vh - 150px); /* Leave room for header/ticker */
-            overflow: hidden; /* CRITICAL: Prevents the screen itself from growing */
-        }
-
-        /* LEFT PANEL - LOCKED TO TOP */
-        .now-calling-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start; /* FORCE TOP ALIGNMENT */
-            padding-top: 80px; /* FIXED DISTANCE FROM TOP */
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 40px;
-            height: 100%; /* Fill the grid area but don't exceed it */
-        }
-
-        .number-lock {
-            font-size: 28vh;
-            font-weight: 900;
-            line-height: 0.8; /* Pull number up to the text */
-            color: white;
-            margin: 0;
-            padding: 0;
-            text-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        }
-
-        /* RIGHT PANEL - INDEPENDENT SCROLL */
-        .monitor-panel {
-            display: flex;
-            flex-direction: column;
-            height: 100%; /* Locked to grid height */
-            overflow: hidden;
-        }
-
         .monitor-scroll {
-            flex: 1;
-            overflow-y: auto;
-            border-radius: 0 0 40px 40px;
+            flex: 1; overflow-y: auto; border-radius: 0 0 40px 40px;
         }
-        .monitor-scroll::-webkit-scrollbar { width: 8px; }
+        .monitor-scroll::-webkit-scrollbar { width: 6px; }
         .monitor-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
 
-        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        /* TICKER */
+        .ticker-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; background: #000;
+            color: #fbbf24; display: flex; align-items: center; font-size: 1.5rem; font-weight: 800;
+            border-top: 4px solid #d97706; z-index: 100;
+        }
         .ticker-move { white-space: nowrap; animation: marquee 30s linear infinite; display: inline-block; padding-left: 100%; }
-        @keyframes flash-call { 0%, 100% { color: white; transform: scale(1); } 50% { color: #60a5fa; transform: scale(1.02); } }
-        .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+        /* GLOBAL UTILS */
+        .global-nav { height: 80px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
-        .ticker-bar { height: 60px; background: black; color: #fbbf24; display: flex; align-items: center; font-size: 1.5rem; font-weight: 800; border-top: 4px solid #d97706; flex-shrink: 0; }
+        @keyframes flash-call { 0%, 100% { color: white; } 50% { color: #60a5fa; transform: scale(1.02); } }
+        .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
+        // --- 1. FIREBASE SETUP ---
         const firebaseConfig = {
             apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
             authDomain: "clinicqueue-d9d3a.firebaseapp.com",
@@ -95,6 +86,7 @@
         const db = firebase.firestore();
 
         function App() {
+            // --- STATE & PERSISTENCE ---
             const [view, setView] = React.useState(localStorage.getItem('active_view') || 'reg');
             const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
             const [queue, setQueue] = React.useState([]);
@@ -111,9 +103,14 @@
             const [audioOn, setAudioOn] = React.useState(false);
             const [isCalling, setIsCalling] = React.useState(false);
 
+            // Save settings locally for persistence
             React.useEffect(() => {
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
+            }, [view, branch]);
+
+            // Database Listeners
+            React.useEffect(() => {
                 const unsub = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => {
                     setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 });
@@ -127,15 +124,27 @@
                     }
                 });
                 return () => unsub();
-            }, [branch, view]);
+            }, [branch]);
+
+            const updateConfig = (updates) => {
+                db.collection("branches").doc(branch).collection("settings").doc("config").set(updates, {merge: true});
+            };
 
             const handlePrint = (num) => {
                 const now = new Date();
+                const currentServing = queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0];
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
                 document.body.appendChild(iframe);
                 const doc = iframe.contentWindow.document;
-                doc.write(`<html><body style="text-align:center;font-family:sans-serif;"><h3>${ticketHeader}</h3><h1>${num}</h1><p>${ticketFooter}</p><small>${now.toLocaleString()}</small></body></html>`);
+                doc.write(`<html><body style="text-align:center;font-family:sans-serif;margin:0;padding:10px;width:48mm;">
+                    <h3 style="margin:0">${ticketHeader}</h3>
+                    <p style="font-size:10px;margin:5px 0;">NOMBOR GILIRAN</p>
+                    <h1 style="font-size:45px;margin:5px 0;">${num}</h1>
+                    <div style="border:1px solid black;padding:2px;font-size:10px;">NOMBOR SEMASA: ${currentServing?.num || '-'}</div>
+                    <p style="font-size:10px;margin-top:10px;">${ticketFooter}</p>
+                    <small style="font-size:8px">${now.toLocaleString()}</small>
+                </body></html>`);
                 doc.close();
                 iframe.contentWindow.print();
                 setTimeout(() => document.body.removeChild(iframe), 1000);
@@ -144,35 +153,46 @@
             const currentCaller = queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0];
 
             return (
-                <div className={`h-screen flex flex-col ${view === 'tv' ? 'tv-dark' : 'bg-slate-50'}`}>
+                <div className={`h-screen flex flex-col overflow-hidden ${view === 'tv' ? '' : 'bg-slate-50'}`}>
                     
                     {/* SETTINGS MODAL */}
                     {isSettingsOpen && (
-                        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
-                            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl text-slate-800">
-                                <h2 className="text-2xl font-black mb-6">Settings</h2>
-                                <div className="space-y-4">
-                                    <div><label className="text-xs font-bold uppercase text-slate-400">Ticker Text</label>
-                                    <textarea className="w-full p-2 border rounded" value={tickerText} onChange={e => {setTickerText(e.target.value); db.collection("branches").doc(branch).collection("settings").doc("config").set({ticker: e.target.value}, {merge:true})}} /></div>
-                                    <div><label className="text-xs font-bold uppercase text-slate-400">Ticket Header</label>
-                                    <input className="w-full p-2 border rounded" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); db.collection("branches").doc(branch).collection("settings").doc("config").set({ticketHeader: e.target.value}, {merge:true})}} /></div>
-                                    <div><label className="text-xs font-bold uppercase text-slate-400">Manage Rooms (Comma Separated)</label>
-                                    <input className="w-full p-2 border rounded" value={rooms.join(', ')} onChange={e => {const r = e.target.value.split(', '); setRooms(r); db.collection("branches").doc(branch).collection("settings").doc("config").set({rooms: r}, {merge:true})}} /></div>
+                        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl text-slate-800 max-h-[90vh] overflow-y-auto">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-black">Clinic Configuration</h2>
+                                    <button onClick={() => setIsSettingsOpen(false)} className="text-2xl font-bold">&times;</button>
                                 </div>
-                                <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-900 text-white py-3 rounded-xl mt-6 font-bold uppercase tracking-widest">Done</button>
+                                <div className="space-y-6">
+                                    <div className="bg-blue-50 p-4 rounded-xl space-y-3">
+                                        <label className="text-[10px] font-black uppercase text-blue-600">Ticket Print Settings</label>
+                                        <input className="w-full p-2 border rounded font-bold" placeholder="Header" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateConfig({ticketHeader: e.target.value})}} />
+                                        <textarea className="w-full p-2 border rounded text-sm" placeholder="Footer" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateConfig({ticketFooter: e.target.value})}} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-400">TV Ticker Display</label>
+                                        <textarea className="w-full p-2 border rounded font-medium text-sm mt-1" value={tickerText} onChange={e => {setTickerText(e.target.value); updateConfig({ticker: e.target.value})}} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-400">Manage Rooms (Comma Separated)</label>
+                                        <input className="w-full p-2 border rounded font-bold mt-1" value={rooms.join(', ')} onChange={e => {const r = e.target.value.split(', '); setRooms(r); updateConfig({rooms: r})}} />
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-900 text-white py-4 rounded-2xl mt-8 font-black uppercase tracking-widest">Close Settings</button>
                             </div>
                         </div>
                     )}
 
-                    {/* PHARMACY REMARKS MODAL */}
+                    {/* PHARMACY SEND MODAL */}
                     {remarksTarget && (
-                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center">
-                            <div className="bg-white rounded-2xl p-6 w-80 text-slate-800">
-                                <h3 className="font-bold mb-2">Note for Pharmacy</h3>
-                                <textarea className="w-full p-2 border rounded" id="pharm_note_input" placeholder="Check BP, etc..."/>
-                                <div className="flex gap-2 mt-4">
-                                    <button className="flex-1 bg-slate-100 py-2 rounded" onClick={() => setRemarksTarget(null)}>Cancel</button>
-                                    <button className="flex-1 bg-blue-600 text-white py-2 rounded font-bold" onClick={() => {
+                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center backdrop-blur-sm">
+                            <div className="bg-white rounded-2xl p-6 w-80 text-slate-800 shadow-2xl">
+                                <h3 className="font-black text-xl mb-4">Send to Pharmacy</h3>
+                                <div className="mb-4 text-sm font-bold text-blue-600 uppercase tracking-tighter">#{remarksTarget.num} - {remarksTarget.name}</div>
+                                <textarea className="w-full p-3 border rounded-xl font-bold text-sm outline-none focus:ring-2 ring-blue-500" id="pharm_note_input" placeholder="Notes (Ex: Check BP)..."/>
+                                <div className="flex gap-2 mt-6">
+                                    <button className="flex-1 bg-slate-100 py-3 rounded-xl font-bold" onClick={() => setRemarksTarget(null)}>Cancel</button>
+                                    <button className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold" onClick={() => {
                                         const note = document.getElementById('pharm_note_input').value;
                                         db.collection("branches").doc(branch).collection("queue").doc(remarksTarget.id).update({status: 'collecting', loc: 'Pharmacy', remarks: note});
                                         setRemarksTarget(null);
@@ -182,118 +202,113 @@
                         </div>
                     )}
 
-                    <nav className={`global-nav ${view === 'tv' ? 'nav-dark' : 'nav-light'}`}>
+                    {/* NAV BAR */}
+                    <nav className={`global-nav ${view === 'tv' ? 'hidden' : 'bg-white'}`}>
                         <div className="flex items-center gap-4">
-                            <span className={`text-2xl font-black ${view==='tv'?'text-white':'text-slate-900'}`}>ARA Queue</span>
-                            <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-slate-100 p-2 rounded-lg text-xs font-bold uppercase outline-none text-black">
+                            <span className="text-xl font-black text-slate-900">SwiftQueue PRO</span>
+                            <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-slate-100 p-2 rounded-lg text-xs font-bold uppercase outline-none">
                                 {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}
                             </select>
                         </div>
                         <div className="flex gap-2">
                             {['reg', 'doc', 'pharmacy', 'tv'].map(v => (
-                                <button key={v} onClick={() => setView(v)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${view === v ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{v}</button>
+                                <button key={v} onClick={() => setView(v)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase ${view === v ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{v}</button>
                             ))}
-                            <button onClick={() => setIsSettingsOpen(true)} className={`p-2 ${view==='tv'?'text-white':'text-slate-900'}`}>⚙️</button>
+                            <button onClick={() => setIsSettingsOpen(true)} className="p-2 ml-2 hover:bg-slate-100 rounded-lg text-xl">⚙️</button>
                         </div>
                     </nav>
 
+                    {/* VIEW LOGIC */}
                     {view === 'tv' ? (
-                        <div className="tv-main-grid">
-                            {/* LEFT PANEL: LOCKED TOP-ANCHOR */}
-                            <div className="now-calling-panel">
-                                {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center cursor-pointer rounded-[40px]"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-black animate-pulse">ENABLE SOUND</button></div>}
-                                
-                                <span className="text-blue-300 text-3xl font-black uppercase tracking-[0.5em] mb-4">Now Calling</span>
-                                
-                                <div className={`number-lock ${isCalling ? 'animate-calling' : ''}`}>
-                                    {currentCaller?.num || '---'}
-                                </div>
-                                
-                                <div className="text-6xl font-bold text-white uppercase mt-12 truncate w-full text-center px-4 drop-shadow-md">
-                                    {currentCaller?.name || 'Please Wait'}
-                                </div>
-                                
-                                <div className="text-7xl font-black text-emerald-400 uppercase mt-4 tracking-wider">
-                                    {currentCaller?.loc || 'Standby'}
-                                </div>
-                            </div>
-
-                            {/* RIGHT PANEL: ISOLATED SCROLL */}
-                            <div className="monitor-panel gap-6">
-                                <div className="glass-panel p-8 rounded-[40px] text-center border-white/10 shadow-2xl flex-shrink-0">
-                                    <div className="text-7xl font-black text-blue-300 drop-shadow-md">{(new Date()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
-                                    <div className="text-2xl font-bold text-white/60 uppercase tracking-widest mt-2">{(new Date()).toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
-                                </div>
-                                
-                                <div className="flex-1 glass-panel border-white/10 flex flex-col overflow-hidden">
-                                    <div className="p-5 border-b border-white/10 text-xs font-black uppercase text-white/40 tracking-widest flex justify-between">
-                                        <span>Patient List</span>
-                                        <span className="text-emerald-400">{queue.length} Total</span>
+                        <div className="tv-screen">
+                            <div className="tv-body">
+                                <div className="zone-left">
+                                    {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center rounded-[40px] cursor-pointer"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-black animate-pulse uppercase">Activate Sound</button></div>}
+                                    <span className="text-blue-300 text-4xl font-black uppercase tracking-[0.4em] mb-4">Now Calling</span>
+                                    <div className={`huge-number ${isCalling ? 'animate-calling' : ''}`}>
+                                        {currentCaller?.num || '---'}
                                     </div>
-                                    <div className="monitor-scroll custom-scrollbar">
-                                        {queue.map(p => (
-                                            <div key={p.id} className="p-6 border-b border-white/5 grid grid-cols-[1fr_2fr_1.5fr] items-center">
-                                                <span className="text-4xl font-black text-white">#{p.num}</span>
-                                                <span className="text-xl font-bold text-white/80 truncate pr-2 uppercase">{p.name}</span>
-                                                <span className="text-right text-lg font-black text-emerald-300 uppercase tracking-tighter">{p.loc}</span>
-                                            </div>
-                                        ))}
+                                    <div className="text-5xl font-bold text-white uppercase mt-12 truncate w-full text-center px-8">
+                                        {currentCaller?.name || 'Please Wait'}
+                                    </div>
+                                    <div className="text-7xl font-black text-emerald-400 uppercase mt-4">
+                                        {currentCaller?.loc || 'Standby'}
+                                    </div>
+                                </div>
+                                <div className="zone-right">
+                                    <div className="glass-box p-8 text-center flex-shrink-0">
+                                        <div className="text-6xl font-black text-blue-300">{(new Date()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
+                                        <div className="text-xl font-bold text-white/60 uppercase mt-1">{(new Date()).toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
+                                    </div>
+                                    <div className="flex-1 glass-box flex flex-col overflow-hidden">
+                                        <div className="p-5 border-b border-white/10 text-xs font-black uppercase text-white/40 flex justify-between">
+                                            <span>Patient Status</span>
+                                            <span className="text-emerald-400">{queue.length} Active</span>
+                                        </div>
+                                        <div className="monitor-scroll">
+                                            {queue.map(p => (
+                                                <div key={p.id} className="p-6 border-b border-white/5 grid grid-cols-[1fr_2fr_1.5fr] items-center">
+                                                    <span className="text-4xl font-black text-white">#{p.num}</span>
+                                                    <span className="text-xl font-bold text-white/80 truncate pr-2 uppercase">{p.name}</span>
+                                                    <span className="text-right text-lg font-black text-emerald-300 uppercase">{p.loc}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            
                             <div className="ticker-bar"><div className="ticker-move">{tickerText}</div></div>
+                            <button onClick={()=>setView('reg')} className="absolute top-2 right-2 opacity-0 hover:opacity-100 text-white text-[8px]">EXIT TV</button>
                         </div>
                     ) : (
-                        /* ADMIN VIEWS REMAIN UNCHANGED BUT WITH COLUMN REMARKS */
-                        <div className="admin-layout text-slate-800">
-                            <div className="bg-white rounded-[30px] border shadow-sm flex flex-col overflow-hidden">
-                                {view === 'reg' && (
-                                    <div className="p-10 flex flex-col gap-6 max-w-sm mx-auto">
-                                        <h1 className="text-3xl font-black text-center uppercase tracking-tight">Registration</h1>
-                                        <input className="p-4 border rounded-xl font-bold" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} />
-                                        <input className="p-4 border rounded-xl text-5xl font-black text-center no-spinner" type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} />
-                                        <button className="bg-slate-950 text-white py-5 rounded-2xl font-black shadow-lg" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>REGISTER PATIENT</button>
-                                        <button className="border-2 py-4 rounded-2xl font-bold text-slate-400" onClick={() => handlePrint(lastTicket)}>PRINT LAST TICKET</button>
-                                        <button className="mt-10 text-red-500 font-bold text-[10px] uppercase hover:underline" onClick={() => {if(confirm("Clear database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}>Reset Daily Database</button>
+                        <div className="admin-layout flex-1 grid grid-cols-[1fr_380px] gap-6 p-6 overflow-hidden">
+                            <div className="bg-white rounded-[40px] shadow-sm border overflow-hidden flex flex-col">
+                                {view === 'reg' ? (
+                                    <div className="flex flex-col h-full items-center justify-center p-8 gap-6 max-w-sm mx-auto">
+                                        <h1 className="text-3xl font-black uppercase">Registration</h1>
+                                        <input className="w-full p-4 border rounded-2xl font-bold text-lg" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} />
+                                        <input className="w-full p-4 border rounded-2xl text-5xl font-black text-center no-spinner" type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} />
+                                        <button className="w-full bg-slate-950 text-white py-5 rounded-2xl font-black shadow-lg uppercase" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>Register</button>
+                                        <button className="w-full border-2 py-4 rounded-2xl font-bold text-slate-400 uppercase text-xs" onClick={() => handlePrint(lastTicket)}>Print Last Ticket</button>
+                                        <button className="mt-4 text-red-500 font-bold text-[10px] uppercase hover:underline" onClick={() => {if(confirm("Wipe database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}>Reset Daily Database</button>
                                     </div>
-                                )}
-
-                                {(view === 'doc' || view === 'pharmacy') && (
+                                ) : (
                                     <div className="flex flex-col h-full overflow-hidden">
-                                        <div className="p-4 bg-slate-50 border-b font-black text-xs uppercase tracking-widest flex justify-between">
-                                            <span>{view} console</span>
-                                            <span className="text-slate-400">{branch}</span>
+                                        <div className="p-4 bg-slate-50 border-b font-black text-xs uppercase tracking-widest text-slate-500">
+                                            {view} Console - {branch}
                                         </div>
                                         <div className="flex-1 overflow-y-auto custom-scrollbar">
                                             {queue.filter(p => view === 'pharmacy' ? p.status === 'collecting' : p.status !== 'finished').map(p => (
                                                 <div key={p.id} className="p-4 border-b flex items-center gap-4 hover:bg-slate-50">
                                                     <div className="w-16 text-2xl font-black">#{p.num}</div>
-                                                    <div className="flex-1 truncate font-bold text-sm uppercase text-blue-600">{p.name || 'Anonymous'}</div>
+                                                    <div className="flex-1 truncate font-bold text-sm uppercase text-blue-600">{p.name || '---'}</div>
                                                     
+                                                    {/* REMARKS COLUMN */}
                                                     {view === 'pharmacy' && (
                                                         <div className="w-1/3 flex-shrink-0">
                                                             <textarea 
                                                                 defaultValue={p.remarks} 
                                                                 onBlur={e => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({remarks: e.target.value})} 
-                                                                className="w-full text-[11px] p-2 bg-yellow-50 border border-yellow-200 rounded leading-tight font-medium" 
-                                                                placeholder="Pharmacist note..."/>
+                                                                className="w-full text-[11px] p-2 bg-yellow-50 border border-yellow-200 rounded leading-tight font-medium outline-none h-12 resize-none" 
+                                                                placeholder="Note..."/>
                                                         </div>
                                                     )}
 
                                                     <div className="flex gap-1 flex-shrink-0">
                                                         {view === 'doc' ? (
                                                             <>
-                                                            {rooms.map(r => <button key={r} onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc: r, callTrigger: Date.now()})} className="bg-slate-800 text-white px-2 py-1 rounded text-[9px] font-black uppercase">Call {r.split(' ')[1] || r}</button>)}
-                                                            <button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase">TO DISP</button>
+                                                                <div className="flex flex-wrap gap-1 max-w-[120px] justify-end">
+                                                                    {rooms.map(r => <button key={r} onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc: r, callTrigger: Date.now()})} className="bg-slate-800 text-white px-2 py-1 rounded text-[9px] font-black">CALL {r}</button>)}
+                                                                </div>
+                                                                <button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase self-center h-8">TO DISP</button>
                                                             </>
                                                         ) : (
                                                             <>
-                                                            <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc:'Pharmacy', callTrigger: Date.now()})} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase">Call</button>
-                                                            <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'finished', loc:'Done'})} className="bg-slate-800 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase">Done</button>
+                                                                <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc:'Pharmacy', callTrigger: Date.now()})} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase h-8">CALL</button>
+                                                                <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'finished', loc:'Done'})} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase h-8">DONE</button>
                                                             </>
                                                         )}
-                                                        <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 ml-2">✕</button>
+                                                        <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 ml-1 px-2">✕</button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -301,15 +316,14 @@
                                     </div>
                                 )}
                             </div>
-                            
-                            <div className="bg-white rounded-[30px] border shadow-sm overflow-hidden flex flex-col">
-                                <div className="p-4 border-b font-black text-xs uppercase tracking-widest text-slate-400">Activity monitor</div>
-                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="bg-white rounded-[40px] border shadow-sm flex flex-col overflow-hidden">
+                                <div className="p-4 border-b font-black text-xs uppercase text-slate-400">Monitor</div>
+                                <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                     {queue.map(p => (
-                                        <div key={p.id} className="p-4 border-b flex justify-between items-center text-xs">
-                                            <span className="font-black text-lg">#{p.num}</span>
-                                            <span className="font-bold uppercase text-slate-500">{p.status}</span>
-                                            <span className="font-black uppercase text-blue-600">{p.loc}</span>
+                                        <div key={p.id} className="flex justify-between items-center text-xs">
+                                            <span className="font-black">#{p.num}</span>
+                                            <span className="font-bold uppercase text-slate-400 px-2">{p.status}</span>
+                                            <span className="font-black uppercase text-blue-600 truncate">{p.loc}</span>
                                         </div>
                                     ))}
                                 </div>
