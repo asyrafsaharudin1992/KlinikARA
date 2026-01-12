@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftQueue Pro - Stable isolation</title>
+    <title>AraQue Pro - v14.1 Manager</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,84 +14,64 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; overflow: hidden; height: 100vh; width: 100vw; }
-        
-        /* THE STABLE TV ENGINE - ABSOLUTE ISOLATION */
-        .tv-screen { 
-            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
-            height: 100vh; width: 100vw; overflow: hidden; position: relative; 
-        }
+        /* CORE */
+        * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; margin: 0; overflow: hidden; height: 100vh; width: 100vw; }
 
-        /* 1. FIXED TOP-ANCHORED CALLING BOX */
-        .calling-zone {
-            position: absolute;
-            top: 30px;
-            left: 30px;
-            width: calc(60% - 45px); /* Strict width */
-            height: calc(100vh - 120px); /* Strict height */
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 40px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start; /* ALWAYS TOP */
-            padding-top: 8vh;
-        }
-
-        .huge-number {
-            font-size: 32vh;
-            font-weight: 900;
-            line-height: 0.8;
-            margin: 0;
-            color: white;
-            text-shadow: 0 10px 60px rgba(0,0,0,0.5);
-        }
-
-        /* 2. FIXED MONITOR BOX */
-        .monitor-zone {
-            position: absolute;
-            top: 30px;
-            right: 30px;
-            width: calc(40% - 15px); /* Strict width */
-            height: calc(100vh - 120px); /* Strict height */
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .glass-box { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 40px; overflow: hidden; }
-        
-        .monitor-scroll {
-            flex: 1;
-            overflow-y: auto;
-        }
-        .monitor-scroll::-webkit-scrollbar { width: 6px; }
-        .monitor-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
-
-        /* TICKER BAR */
-        .ticker-bar {
-            position: absolute; bottom: 0; left: 0; width: 100%;
-            height: 60px; background: #000; color: #fbbf24;
-            display: flex; align-items: center; font-size: 1.5rem; font-weight: 800;
-            border-top: 4px solid #d97706; z-index: 100;
-        }
-        .ticker-move { white-space: nowrap; animation: marquee 30s linear infinite; display: inline-block; padding-left: 100%; }
+        /* --- TV STYLES --- */
+        .tv-screen { background: #0f172a; background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .tv-layout { display: grid; grid-template-columns: 320px 1fr 480px; gap: 24px; padding: 30px; padding-bottom: 140px; height: 100%; overflow: hidden; }
+        .col-left, .col-middle { display: flex; flex-direction: column; gap: 24px; height: 100%; }
+        .col-right { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        .bento-tile { border-radius: 2.5rem !important; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .time-tile { flex: 1; background: #2563eb; color: white; }
+        .date-tile { flex: 1; background: #f97316; color: white; }
+        .hero-tile { height: 100%; width: 100%; background: #f8fafc; color: #1e293b; justify-content: flex-start; padding-top: 8vh; position: relative; border: 1px solid rgba(255,255,255,0.1); }
+        .monitor-tile { height: 100%; justify-content: flex-start; padding: 0; background: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); }
+        .hero-label { font-size: 2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3em; color: #94a3b8; margin-bottom: 2vh; }
+        .huge-number { font-size: 38vh; font-weight: 900; line-height: 0.8; color: #0f172a; letter-spacing: -0.05em; margin: 0; text-shadow: 4px 4px 0px #e2e8f0; }
+        .huge-location { font-size: 4rem; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: -0.02em; text-align: center; line-height: 1.1; margin-top: 6vh; padding: 0 20px; }
+        .tile-label-white { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.8); margin-bottom: 5px; }
+        .monitor-header { width: 100%; display: grid; grid-template-columns: 0.8fr 1.5fr 1fr; padding: 20px; background: #e2e8f0; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; text-align: center; border-bottom: 2px solid #cbd5e1; flex-shrink: 0; }
+        .monitor-scroll { width: 100%; flex: 1; overflow-y: auto; padding: 15px; }
+        .monitor-item { display: grid; grid-template-columns: 0.8fr 1.5fr 1fr; background: white; margin-bottom: 10px; padding: 18px 10px; border-radius: 1.5rem !important; align-items: center; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .ticker-container { position: absolute; bottom: 0; left: 0; width: 100%; z-index: 100; display: flex; flex-direction: column; }
+        .ticker-layer-2 { width: 100%; height: 50px; display: flex; align-items: center; font-size: 1.4rem; font-weight: 700; overflow: hidden; }
+        .ticker-layer-1 { width: 100%; height: 60px; display: flex; align-items: center; font-size: 1.8rem; font-weight: 800; overflow: hidden; }
+        .ticker-move-fast { white-space: nowrap; animation: marquee 25s linear infinite; display: inline-block; padding-left: 100%; }
+        .ticker-move-slow { white-space: nowrap; animation: marquee 45s linear infinite; display: inline-block; padding-left: 100%; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        @keyframes pulse-hero { 0% { background: #f8fafc; } 50% { background: #e2e8f0; } }
+        .hero-active { animation: pulse-hero 0.8s ease-in-out infinite; }
+        .badge-call { background: #fee2e2; color: #dc2626; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
+        .badge-wait { background: #f1f5f9; color: #64748b; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
+        .badge-pharm { background: #fef9c3; color: #ca8a04; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
 
-        /* UI UTILS */
-        .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); background: white; flex-shrink: 0; }
-        .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 90px); gap: 20px; padding: 20px; box-sizing: border-box; background: #f8fafc; overflow: hidden; }
-        @keyframes flash-call { 0%, 100% { color: white; } 50% { color: #60a5fa; transform: scale(1.02); } }
-        .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
+        /* --- REGISTRATION PAGE --- */
+        .reg-layout { display: grid; grid-template-columns: 400px 1fr 350px; gap: 24px; padding: 24px; height: calc(100vh - 80px); background: #f1f5f9; }
+        .reg-uniform-box { height: 80px; width: 100%; border-radius: 1.5rem; border: none; font-weight: 700; display: flex; align-items: center; justify-content: center; outline: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.1s; }
+        .reg-uniform-box:active { transform: scale(0.98); }
+        .reg-input-style { background-color: #f8fafc; color: #1e293b; font-size: 1.2rem; padding: 0 20px; text-align: center; }
+        .reg-input-style::placeholder { color: #94a3b8; text-transform: uppercase; font-size: 0.9rem; }
+        .reg-btn-primary { background-color: #0f172a; color: white; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; }
+        .reg-btn-secondary { background-color: rgba(255,255,255,0.2); color: white; text-transform: uppercase; font-size: 0.8rem; cursor: pointer; }
+        .stat-container { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 24px; height: 100%; width: 100%; }
+        .stat-square { width: 180px; height: 180px; border-radius: 2.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 15px 30px rgba(0,0,0,0.1); color: white; transition: transform 0.2s; flex-shrink: 0; }
+        .stat-square:hover { transform: translateY(-5px); }
+
+        /* ADMIN UTILS */
+        .admin-layout { display: grid; grid-template-columns: 1fr 400px; height: calc(100vh - 80px); gap: 24px; padding: 24px; background: #f1f5f9; }
+        .admin-panel { background: white; border-radius: 2rem !important; overflow: hidden; border: 1px solid #cbd5e1; }
+        .admin-panel-col { display: flex; flex-direction: column; }
+        .global-nav { height: 80px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; background: white; border-bottom: 1px solid #d2d2d7; }
+        .checkbox-custom { width: 20px; height: 20px; accent-color: #0f172a; cursor: pointer; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- 1. FIREBASE SETUP ---
+        // 1. FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
             authDomain: "clinicqueue-d9d3a.firebaseapp.com",
@@ -101,18 +81,34 @@
             appId: "1:45318170672:web:3edd81acbb292c2889a5f5",
             measurementId: "G-S5NEHZD6F3"
         };
-        firebase.initializeApp(firebaseConfig);
+        try { if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); } catch(e){ console.error(e); }
         const db = firebase.firestore();
 
-        // --- 2. MAIN APP ---
+        // 2. COMPONENTS
+        const LiveClock = () => {
+            const [time, setTime] = React.useState(new Date());
+            React.useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
+            return (<div className="flex flex-col items-center justify-center h-full w-full"><span className="tile-label-white">Current Time</span><div className="text-5xl font-black text-white tracking-tighter leading-none">{time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div></div>);
+        };
+
+        const LiveDate = () => {
+            const [date, setDate] = React.useState(new Date());
+            let hijri = ""; try { hijri = new Intl.DateTimeFormat('en-GB-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(date); } catch (e) { hijri = date.toLocaleDateString(); }
+            return (<div className="flex flex-col items-center justify-center h-full w-full text-white text-center"><div className="text-3xl font-bold uppercase tracking-widest mb-1">{date.toLocaleDateString('en-GB', {weekday:'long'})}</div><div className="text-4xl font-black tracking-tighter leading-none mb-3">{date.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric'})}</div><div className="text-sm font-bold opacity-80 uppercase tracking-wide border-t border-white/30 pt-2 w-2/3">{hijri}</div></div>);
+        };
+
         function App() {
             const [view, setView] = React.useState(localStorage.getItem('active_view') || 'reg');
             const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
             const [queue, setQueue] = React.useState([]);
+            const [selectedIds, setSelectedIds] = React.useState([]);
             
-            // Persistent Config States
+            // Settings
+            const [t1Text, setT1Text] = React.useState('Selamat datang ke KLINIK ARA 24 JAM.');
+            const [t1Bg, setT1Bg] = React.useState('#2563eb'); const [t1Color, setT1Color] = React.useState('#ffffff');
+            const [t2Text, setT2Text] = React.useState('Sila pastikan nombor giliran anda adalah betul.');
+            const [t2Bg, setT2Bg] = React.useState('#dc2626'); const [t2Color, setT2Color] = React.useState('#ffffff');
             const [rooms, setRooms] = React.useState(['Room 1', 'Room 2', 'Room 3']);
-            const [tickerText, setTickerText] = React.useState('Selamat datang ke KLINIK ARA 24 JAM.');
             const [ticketHeader, setTicketHeader] = React.useState('KLINIK ARA 24 JAM');
             const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
 
@@ -122,83 +118,121 @@
             const [remarksTarget, setRemarksTarget] = React.useState(null);
             const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
             const [audioOn, setAudioOn] = React.useState(false);
-            const [isCalling, setIsCalling] = React.useState(false);
+            
+            const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
             React.useEffect(() => {
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
-            }, [view, branch]);
-
-            React.useEffect(() => {
-                const unsub = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => {
-                    setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                });
-                db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
+                const unsubQ = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubC = db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
-                        if (d.rooms) setRooms(d.rooms);
-                        if (d.ticker) setTickerText(d.ticker);
-                        if (d.ticketHeader) setTicketHeader(d.ticketHeader);
-                        if (d.ticketFooter) setTicketFooter(d.ticketFooter);
+                        if (d.rooms) setRooms(d.rooms); if (d.ticketHeader) setTicketHeader(d.ticketHeader); if (d.ticketFooter) setTicketFooter(d.ticketFooter);
+                        if (d.t1Text) setT1Text(d.t1Text); if (d.t1Bg) setT1Bg(d.t1Bg); if (d.t1Color) setT1Color(d.t1Color);
+                        if (d.t2Text) setT2Text(d.t2Text); if (d.t2Bg) setT2Bg(d.t2Bg); if (d.t2Color) setT2Color(d.t2Color);
                     }
                 });
-                return () => unsub();
+                return () => { unsubQ(); unsubC(); };
             }, [branch]);
 
+            const updateSettings = (updates) => db.collection("branches").doc(branch).collection("settings").doc("config").set(updates, {merge:true});
+            const currentCaller = queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0];
+            const lastCallId = React.useRef(null);
+
+            React.useEffect(() => {
+                if (view === 'tv' && audioOn && currentCaller && currentCaller.callTrigger !== lastCallId.current) {
+                    lastCallId.current = currentCaller.callTrigger;
+                    chimeRef.current.play().then(() => {
+                        if ('speechSynthesis' in window) { setTimeout(() => { const msg = new SpeechSynthesisUtterance(`Number ${currentCaller.num}. Proceed to ${currentCaller.loc}.`); window.speechSynthesis.speak(msg); }, 500); }
+                    }).catch(e=>{});
+                }
+            }, [currentCaller, view, audioOn]);
+
             const handlePrint = (num) => {
-                const currentServing = queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0];
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
+                const iframe = document.createElement('iframe'); iframe.style.display = 'none'; document.body.appendChild(iframe);
                 const doc = iframe.contentWindow.document;
-                doc.write(`<html><body style="text-align:center;font-family:sans-serif;padding:20px;width:48mm;">
-                    <h3 style="margin:0">${ticketHeader}</h3>
-                    <p style="font-size:10px">NOMBOR GILIRAN</p>
-                    <h1 style="font-size:45px;margin:5px 0;">${num}</h1>
-                    <div style="border:1px solid black;padding:2px;font-size:10px;">NOMBOR SEMASA: ${currentServing?.num || '-'}</div>
-                    <p style="font-size:10px;margin-top:10px;">${ticketFooter}</p>
-                </body></html>`);
-                doc.close();
-                iframe.contentWindow.print();
-                setTimeout(() => document.body.removeChild(iframe), 1000);
+                doc.write(`<html><body style="text-align:center;font-family:sans-serif;padding:20px;width:48mm;"><h3>${ticketHeader}</h3><h1>${num}</h1><p>${ticketFooter}</p></body></html>`);
+                doc.close(); iframe.contentWindow.print(); setTimeout(() => document.body.removeChild(iframe), 1000);
             };
 
-            const currentCaller = queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0];
+            const updatePatient = (id, s, l, trig=false, rem=null) => {
+                const data = { status: s, loc: l, time: Date.now() };
+                if (trig) data.callTrigger = Date.now();
+                if (rem !== null) data.remarks = rem;
+                db.collection("branches").doc(branch).collection("queue").doc(id).update(data);
+            };
+
+            // SELECTION LOGIC
+            const toggleSelect = (id) => {
+                if(selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id));
+                else setSelectedIds([...selectedIds, id]);
+            };
+
+            const deleteSelected = async () => {
+                if(!confirm(`Delete ${selectedIds.length} patients?`)) return;
+                const batch = db.batch();
+                selectedIds.forEach(id => batch.delete(db.collection("branches").doc(branch).collection("queue").doc(id)));
+                await batch.commit();
+                setSelectedIds([]);
+            };
+
+            const clearAllDone = async () => {
+                if(!confirm("Delete all 'DONE' patients?")) return;
+                const snap = await db.collection("branches").doc(branch).collection("queue").where("status", "==", "finished").get();
+                const batch = db.batch();
+                snap.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            };
+
+            const getStatusBadge = (status) => {
+                if(status === 'calling') return <span className="badge-call">CALLING</span>;
+                if(status === 'collecting') return <span className="badge-pharm">PHARMACY</span>;
+                if(status === 'finished') return <span className="bg-slate-800 text-white rounded px-1 text-[10px] font-bold">DONE</span>;
+                return <span className="badge-wait">WAITING</span>;
+            };
+
+            const pendingDr = queue.filter(p => p.status === 'waiting').length;
+            const pendingPharm = queue.filter(p => p.status === 'collecting').length;
+            const totalPatients = queue.length;
 
             return (
                 <div className="h-screen flex flex-col overflow-hidden">
-                    
                     {/* SETTINGS MODAL */}
                     {isSettingsOpen && (
-                        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-                            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl text-slate-800">
-                                <h2 className="text-2xl font-black mb-6">Settings</h2>
+                        <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white p-8 w-full max-w-2xl rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh]">
+                                <h2 className="text-2xl font-bold mb-6">Settings</h2>
                                 <div className="space-y-4">
-                                    <div><label className="text-[10px] font-bold uppercase text-slate-400">Ticker Text</label>
-                                    <textarea className="w-full p-2 border rounded font-medium text-sm" value={tickerText} onChange={e => {setTickerText(e.target.value); db.collection("branches").doc(branch).collection("settings").doc("config").set({ticker: e.target.value}, {merge:true})}} /></div>
-                                    <div><label className="text-[10px] font-bold uppercase text-slate-400">Ticket Header</label>
-                                    <input className="w-full p-2 border rounded font-bold" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); db.collection("branches").doc(branch).collection("settings").doc("config").set({ticketHeader: e.target.value}, {merge:true})}} /></div>
-                                    <div><label className="text-[10px] font-bold uppercase text-slate-400">Ticket Footer</label>
-                                    <textarea className="w-full p-2 border rounded" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); db.collection("branches").doc(branch).collection("settings").doc("config").set({ticketFooter: e.target.value}, {merge:true})}} /></div>
-                                    <div><label className="text-[10px] font-bold uppercase text-slate-400">Rooms (Comma Sep)</label>
-                                    <input className="w-full p-2 border rounded" value={rooms.join(', ')} onChange={e => {const r = e.target.value.split(', '); setRooms(r); db.collection("branches").doc(branch).collection("settings").doc("config").set({rooms: r}, {merge:true})}} /></div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs font-bold uppercase text-slate-400">Header</label><input className="w-full p-2 border rounded" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div>
+                                        <div><label className="text-xs font-bold uppercase text-slate-400">Rooms</label><input className="w-full p-2 border rounded" value={rooms.join(', ')} onChange={e => {const r = e.target.value.split(', '); setRooms(r); updateSettings({rooms: r})}} /></div>
+                                    </div>
+                                    <div><label className="text-xs font-bold uppercase text-slate-400">Ticket Footer</label><textarea className="w-full p-2 border rounded h-20" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div>
+                                    <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl">
+                                        <div><label className="text-xs font-bold text-blue-600">Ticker 1 (Slow)</label><textarea className="w-full p-2 border rounded text-xs" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div>
+                                        <div><label className="text-xs font-bold text-red-600">Ticker 2 (Fast)</label><textarea className="w-full p-2 border rounded text-xs" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div>
+                                    </div>
                                 </div>
-                                <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-900 text-white py-3 rounded-xl mt-6 font-bold uppercase">Done</button>
+                                <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
+                                    <button onClick={() => {if(confirm("DANGER: Wipe database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}} className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-red-100">Factory Reset</button>
+                                    <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold">Done</button>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* REMARKS MODAL */}
+                    {/* PHARMACY MODAL */}
                     {remarksTarget && (
-                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center">
-                            <div className="bg-white rounded-2xl p-6 w-80 text-slate-800">
+                        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm">
+                            <div className="bg-white p-6 w-80 rounded-3xl shadow-2xl">
                                 <h3 className="font-bold mb-2">Note for Pharmacy</h3>
-                                <textarea className="w-full p-2 border rounded" id="pharm_note_input" placeholder="Check BP, etc..."/>
+                                <textarea className="w-full p-2 border rounded-xl h-24" id="pharm_note" placeholder="Write here..."/>
                                 <div className="flex gap-2 mt-4">
-                                    <button className="flex-1 bg-slate-100 py-2 rounded" onClick={() => setRemarksTarget(null)}>Cancel</button>
-                                    <button className="flex-1 bg-blue-600 text-white py-2 rounded" onClick={() => {
-                                        const note = document.getElementById('pharm_note_input').value;
-                                        db.collection("branches").doc(branch).collection("queue").doc(remarksTarget.id).update({status: 'collecting', loc: 'Pharmacy', remarks: note});
+                                    <button className="flex-1 bg-slate-100 py-2 rounded-xl" onClick={() => setRemarksTarget(null)}>Cancel</button>
+                                    <button className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold" onClick={() => {
+                                        const note = document.getElementById('pharm_note').value;
+                                        updatePatient(remarksTarget.id, 'collecting', 'Pharmacy', false, note);
                                         setRemarksTarget(null);
                                     }}>Send</button>
                                 </div>
@@ -206,136 +240,134 @@
                         </div>
                     )}
 
-                    {/* VIEW LOGIC */}
+                    <nav className={`global-nav ${view === 'tv' ? 'hidden' : ''}`}>
+                        <div className="flex items-center gap-6"><span className="text-xl font-bold tracking-tight text-blue-600">AraQue Pro</span><select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                        <div className="flex gap-1">{['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}<button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl">⚙️</button></div>
+                    </nav>
+
+                    {/* MAIN CONTENT */}
                     {view === 'tv' ? (
                         <div className="tv-screen">
-                            {/* LOCKED PANEL 1 */}
-                            <div className="calling-zone">
-                                {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center rounded-[40px] cursor-pointer"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-black animate-pulse">ENABLE SOUND</button></div>}
-                                <span className="text-blue-300 text-4xl font-black uppercase tracking-[0.5em] mb-4">Now Calling</span>
-                                <div className={`huge-number ${isCalling ? 'animate-calling' : ''}`}>
-                                    {currentCaller?.num || '---'}
-                                </div>
-                                <div className="text-5xl font-bold text-white uppercase mt-12 truncate w-full text-center px-8">
-                                    {currentCaller?.name || 'Please Wait'}
-                                </div>
-                                <div className="text-7xl font-black text-emerald-400 uppercase mt-4">
-                                    {currentCaller?.loc || 'Standby'}
-                                </div>
-                            </div>
-
-                            {/* LOCKED PANEL 2 */}
-                            <div className="monitor-zone">
-                                <div className="glass-box p-8 text-center">
-                                    <div className="text-6xl font-black text-blue-300">{(new Date()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
-                                    <div className="text-xl font-bold text-white/60 uppercase tracking-widest mt-1">{(new Date()).toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
-                                </div>
-                                <div className="flex-1 glass-box flex flex-col">
-                                    <div className="p-4 border-b border-white/10 text-[10px] font-black uppercase text-white/40 tracking-widest flex justify-between">
-                                        <span>Live Queue</span>
-                                        <span>{queue.length} Patients</span>
+                            <div className="tv-layout">
+                                <div className="col-left"><div className="bento-tile time-tile"><LiveClock /></div><div className="bento-tile date-tile"><LiveDate /></div></div>
+                                <div className="col-middle">
+                                    <div className={`bento-tile hero-tile ${currentCaller ? 'hero-active' : ''}`}>
+                                        {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl animate-pulse">Start Audio</button></div>}
+                                        <div className="hero-label">Now Calling</div><div className="huge-number">{currentCaller?.num || '---'}</div><div className="huge-location">{currentCaller?.loc || 'STANDBY'}</div>
                                     </div>
-                                    <div className="monitor-scroll custom-scrollbar">
-                                        {queue.map(p => (
-                                            <div key={p.id} className="p-6 border-b border-white/5 grid grid-cols-[0.8fr_2fr_1fr] items-center">
-                                                <span className="text-4xl font-black text-white">#{p.num}</span>
-                                                <span className="text-xl font-bold text-white/80 truncate pr-2 uppercase">{p.name}</span>
-                                                <span className="text-right text-lg font-black text-emerald-300 uppercase">{p.loc.replace('Waiting Area', 'Wait')}</span>
-                                            </div>
-                                        ))}
+                                </div>
+                                <div className="col-right">
+                                    <div className="bento-tile monitor-tile">
+                                        <div className="monitor-header"><span>No.</span><span>Location</span><span>Status</span></div>
+                                        <div className="monitor-scroll">
+                                            {queue.slice(0,30).map(p => (
+                                                <div key={p.id} className="monitor-item">
+                                                    <span className="text-4xl font-black text-slate-800">#{p.num}</span><span className="text-xl font-bold text-blue-600 uppercase truncate w-full">{p.loc.replace('Waiting Area', 'Wait')}</span>{getStatusBadge(p.status)}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="ticker-bar"><div className="ticker-move">{tickerText}</div></div>
-                            <button onClick={()=>setView('reg')} className="absolute top-2 right-2 text-[8px] text-white/20">EXIT</button>
+                            <div className="ticker-container">
+                                <div className="ticker-layer-2" style={{backgroundColor: t2Bg, color: t2Color}}><div className="ticker-move-fast">{t2Text}</div></div>
+                                <div className="ticker-layer-1" style={{backgroundColor: t1Bg, color: t1Color}}><div className="ticker-move-slow">{t1Text}</div></div>
+                            </div>
+                            <button onClick={()=>setView('reg')} className="absolute top-2 right-2 text-[10px] text-white/10 hover:text-white">EXIT</button>
+                        </div>
+                    ) : view === 'reg' ? (
+                        <div className="reg-layout">
+                            <div className="bento-tile bg-blue-600 p-8 shadow-2xl flex flex-col justify-center gap-6">
+                                <h1 className="text-2xl font-black text-white uppercase tracking-tighter text-center">New Registration</h1>
+                                <input className="reg-uniform-box reg-input-style" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} />
+                                <input className="reg-uniform-box reg-input-style" type="number" placeholder="Queue Number" value={inputNum} onChange={e => setInputNum(e.target.value)} />
+                                <button className="reg-uniform-box reg-btn-primary" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting Area', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>Register</button>
+                                <button className="reg-uniform-box reg-btn-secondary" onClick={() => handlePrint(lastTicket)}>Reprint Ticket</button>
+                            </div>
+                            <div className="stat-container">
+                                <div className="stat-square bg-blue-500"><span className="text-6xl font-black">{pendingDr}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Dr</span></div>
+                                <div className="stat-square bg-red-500"><span className="text-6xl font-black">{pendingPharm}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Pharm</span></div>
+                                <div className="stat-square bg-green-500"><span className="text-6xl font-black">{totalPatients}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Total</span></div>
+                            </div>
+                            <div className="admin-panel admin-panel-col shadow-sm">
+                                <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Queue Monitor</div>
+                                <div className="flex-1 overflow-y-auto p-2 monitor-scroll">
+                                    {queue.slice(0,15).map(p => (
+                                        <div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50">
+                                            <div className="flex flex-col"><span className="font-bold text-lg">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div>
+                                            <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     ) : (
-                        <React.Fragment>
-                            <nav className="global-nav">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-xl font-black text-slate-900">SwiftQueue PRO</span>
-                                    <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-slate-100 p-2 rounded-lg text-xs font-bold uppercase">
-                                        {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex gap-2">
-                                    {['reg', 'doc', 'pharmacy', 'tv'].map(v => (
-                                        <button key={v} onClick={() => setView(v)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase ${view === v ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-200 text-slate-600'}`}>{v}</button>
-                                    ))}
-                                    <button onClick={() => setIsSettingsOpen(true)} className="p-2 ml-2 hover:bg-slate-100 rounded-lg text-xl">⚙️</button>
-                                </div>
-                            </nav>
-
-                            <div className="admin-layout">
-                                <div className="bg-white rounded-[40px] shadow-sm border overflow-hidden flex flex-col">
-                                    {view === 'reg' ? (
-                                        <div className="flex flex-col h-full items-center justify-center p-8 gap-6 max-w-sm mx-auto">
-                                            <h1 className="text-3xl font-black uppercase tracking-tight">Registration</h1>
-                                            <input className="w-full p-4 border rounded-2xl font-bold" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} />
-                                            <input className="w-full p-4 border rounded-2xl text-5xl font-black text-center no-spinner" type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} />
-                                            <button className="w-full bg-slate-950 text-white py-5 rounded-2xl font-black shadow-lg" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting Area', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>REGISTER</button>
-                                            <button className="w-full border-2 py-4 rounded-2xl font-bold text-slate-400" onClick={() => handlePrint(lastTicket)}>PRINT TICKET</button>
-                                            <button className="mt-4 text-red-500 font-bold text-[10px] uppercase" onClick={() => {if(confirm("Wipe data?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}>Reset Daily Database</button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col h-full overflow-hidden">
-                                            <div className="p-4 bg-slate-50 border-b font-black text-xs text-slate-500 flex justify-between uppercase">
-                                                <span>{view} console</span>
-                                                <span>{branch}</span>
-                                            </div>
-                                            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                                {queue.filter(p => view === 'pharmacy' ? p.status === 'collecting' : p.status !== 'finished').map(p => (
-                                                    <div key={p.id} className="p-4 border-b flex items-center gap-4 hover:bg-slate-50 transition">
-                                                        <div className="w-16 text-2xl font-black">#{p.num}</div>
-                                                        <div className="flex-1 truncate font-bold text-sm uppercase text-blue-600">{p.name || '---'}</div>
-                                                        
-                                                        {view === 'pharmacy' && (
-                                                            <div className="w-1/3 flex-shrink-0">
-                                                                <textarea 
-                                                                    defaultValue={p.remarks} 
-                                                                    onBlur={e => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({remarks: e.target.value})} 
-                                                                    className="w-full text-[11px] p-2 bg-yellow-50 border border-yellow-200 rounded outline-none h-12 resize-none" 
-                                                                    placeholder="Pharmacist note..."/>
-                                                        </div>
-                                                        )}
-
-                                                        <div className="flex gap-1 flex-shrink-0">
-                                                            {view === 'doc' ? (
-                                                                <>
-                                                                    <div className="flex flex-wrap gap-1 max-w-[120px] justify-end">
-                                                                        {rooms.map(r => <button key={r} onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc: r, callTrigger: Date.now()})} className="bg-slate-800 text-white px-2 py-1 rounded text-[9px] font-black uppercase">Call {r.split(' ')[1] || r}</button>)}
-                                                                    </div>
-                                                                    <button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase self-center h-8">TO DISP</button>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc:'Pharmacy', callTrigger: Date.now()})} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase">Call</button>
-                                                                    <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'finished', loc:'Done'})} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase">Done</button>
-                                                                </>
-                                                            )}
-                                                            <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 ml-1 px-2">✕</button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="bg-white rounded-[40px] border shadow-sm flex flex-col overflow-hidden">
-                                    <div className="p-4 border-b font-black text-xs uppercase text-slate-400">Activity monitor</div>
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                                        {queue.slice(0,10).map(p => (
-                                            <div key={p.id} className="flex justify-between items-center text-xs">
-                                                <span className="font-black text-lg">#{p.num}</span>
-                                                <span className="font-black uppercase text-blue-600 truncate">{p.loc}</span>
-                                            </div>
-                                        ))}
+                        /* --- DOCTOR & PHARMACY CONSOLES (PERSISTENT LIST) --- */
+                        <div className="admin-layout">
+                            <div className="admin-panel admin-panel-col">
+                                <div className="p-4 border-b bg-slate-100 flex justify-between items-center">
+                                    <div className="font-bold text-xs uppercase tracking-widest text-slate-500">{view} CONSOLE — {branch}</div>
+                                    <div className="flex gap-2">
+                                        {selectedIds.length > 0 && <button onClick={deleteSelected} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold uppercase">Delete ({selectedIds.length})</button>}
+                                        <button onClick={clearAllDone} className="bg-slate-300 hover:bg-red-500 hover:text-white transition px-3 py-1 rounded text-xs font-bold uppercase">Clear Done</button>
                                     </div>
                                 </div>
+                                <div className="flex-1 overflow-y-auto p-2 monitor-scroll">
+                                    {/* SHOW ALL PATIENTS (PERSISTENT), SORTED BY TIME */}
+                                    {queue.map(p => (
+                                        <div key={p.id} className={`p-4 border-b flex items-center gap-4 transition-all ${p.status === 'finished' ? 'bg-slate-100 opacity-60' : 'hover:bg-slate-50'}`}>
+                                            <input type="checkbox" className="checkbox-custom" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} />
+                                            <div className="w-12 text-xl font-black">#{p.num}</div>
+                                            <div className="w-32 flex flex-col">
+                                                <span className="font-bold text-sm uppercase text-slate-700 truncate">{p.name || '---'}</span>
+                                            </div>
+                                            
+                                            {/* LOC & STATUS (Doctor View) */}
+                                            {view === 'doc' && (
+                                                <div className="flex-1 flex gap-2">
+                                                    <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border uppercase truncate w-20">{p.loc}</span>
+                                                    <span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase w-20 text-center ${p.status==='calling'?'bg-red-100 text-red-600': p.status==='finished'?'bg-slate-200 text-slate-500':'bg-white text-slate-400'}`}>{p.status}</span>
+                                                </div>
+                                            )}
+
+                                            {/* REMARKS (Pharmacy View) */}
+                                            {view === 'pharmacy' && (
+                                                <div className="flex-1">
+                                                    <textarea defaultValue={p.remarks} onBlur={e => updatePatient(p.id, p.status, p.loc, false, e.target.value)} className="w-full text-xs p-2 bg-yellow-50 border rounded h-10 resize-none" placeholder="Note..."/>
+                                                </div>
+                                            )}
+
+                                            {/* ACTIONS */}
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                {view === 'doc' ? (
+                                                    <>
+                                                        {rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}
+                                                        <button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button>
+                                                        <button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button>
+                                                    </>
+                                                )}
+                                                <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 px-2 font-bold hover:text-red-500">✕</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </React.Fragment>
+                            <div className="admin-panel admin-panel-col">
+                                <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Activity (Internal)</div>
+                                <div className="flex-1 overflow-y-auto p-2 monitor-scroll">
+                                    {queue.slice(0,15).map(p => (
+                                        <div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50">
+                                            <div className="flex flex-col"><span className="font-bold">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div>
+                                            <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
             );
