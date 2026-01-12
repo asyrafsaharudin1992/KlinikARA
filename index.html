@@ -1,555 +1,535 @@
-<div id="root"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftQueue Pro - Klinik Ara 24 Jam</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; overflow: hidden; height: 100vh; }
+        .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); }
+        
+        /* Animations */
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        .ticker-move { white-space: nowrap; animation: marquee 30s linear infinite; display: inline-block; padding-left: 100%; }
+        
+        @keyframes flash-call {
+            0%, 100% { opacity: 1; color: white; transform: scale(1); text-shadow: 0 0 30px rgba(255,255,255,0.8); }
+            50% { opacity: 1; color: #60a5fa; transform: scale(1.02); text-shadow: 0 0 60px rgba(96, 165, 250, 1); }
+        }
+        .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
 
-<style>
-    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; overflow: hidden; height: 100vh; }
-    .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); height: 100vh; width: 100vw; overflow: hidden; }
-    
-    @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-    .ticker-move { white-space: nowrap; animation: marquee 30s linear infinite; display: inline-block; padding-left: 100%; }
-    
-    @keyframes flash-call {
-        0%, 100% { opacity: 1; color: white; transform: scale(1); text-shadow: 0 0 30px rgba(255,255,255,0.8); }
-        50% { opacity: 1; color: #60a5fa; transform: scale(1.02); text-shadow: 0 0 60px rgba(96, 165, 250, 1); }
-    }
-    .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
-    
-    @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    .toast-enter { animation: slide-in 0.5s ease-out forwards; }
-    
-    /* UTILS */
-    .glass-panel { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-    .custom-scrollbar { overflow-y: auto; overflow-x: hidden; }
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
-    .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-    
-    .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 50; position: relative; border-bottom: 1px solid rgba(0,0,0,0.05); }
-    .nav-light { background: white; border-bottom: 2px solid #e2e8f0; }
-    .nav-dark { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 90px); gap: 20px; padding: 20px; box-sizing: border-box; }
-    
-    /* FIX: Force fixed height on TV wrapper to prevent growth */
-    .tv-wrapper-scaled { width: 100%; height: 100%; display: flex; flex-direction: column; transform-origin: top center; transition: transform 0.2s ease-out; position: absolute; top:0; left:0; }
-    
-    /* FIX: Ensure grid doesn't expand beyond viewport */
-    .tv-grid-inner { 
-        display: grid; 
-        grid-template-columns: 1.6fr 1fr; 
-        flex: 1; 
-        gap: 20px; 
-        padding: 30px; 
-        box-sizing: border-box; 
-        overflow: hidden; /* CRITICAL FIX */
-        height: calc(100% - 60px); /* Leave room for ticker */
-    }
-    
-    .ticker-bar { position: absolute; bottom: 0; width: 100%; height: 60px; background-color: #000000; color: #fbbf24; display: flex; align-items: center; overflow: hidden; font-size: 1.5rem; font-weight: 800; border-top: 4px solid #d97706; z-index: 50; }
-    
-    /* SCREENSAVER */
-    .screensaver-layer { transition: opacity 1s ease-in-out; opacity: 0; pointer-events: none; z-index: 9999; }
-    .screensaver-active { opacity: 1; pointer-events: auto; }
-</style>
+        @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast-enter { animation: slide-in 0.5s ease-out forwards; }
+        
+        /* UI Utils */
+        .glass-panel { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .custom-scrollbar { overflow-y: auto; overflow-x: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* Layout */
+        .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 50; position: relative; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .nav-light { background: white; border-bottom: 2px solid #e2e8f0; }
+        .nav-dark { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 90px); gap: 20px; padding: 20px; box-sizing: border-box; }
+        .tv-wrapper-scaled { width: 100%; height: 100%; display: flex; flex-direction: column; transform-origin: top center; transition: transform 0.2s ease-out; }
+        .tv-grid-inner { display: grid; grid-template-columns: 1.6fr 1fr; flex: 1; gap: 20px; padding: 30px; box-sizing: border-box; overflow: hidden; }
+        .ticker-bar { position: absolute; bottom: 0; width: 100%; height: 60px; background-color: #000000; color: #fbbf24; display: flex; align-items: center; overflow: hidden; font-size: 1.5rem; font-weight: 800; border-top: 4px solid #d97706; z-index: 50; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-<script type="text/babel">
-    const firebaseConfig = {
-        apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
-        authDomain: "clinicqueue-d9d3a.firebaseapp.com",
-        projectId: "clinicqueue-d9d3a",
-        storageBucket: "clinicqueue-d9d3a.firebasestorage.app",
-        messagingSenderId: "45318170672",
-        appId: "1:45318170672:web:3edd81acbb292c2889a5f5",
-        measurementId: "G-S5NEHZD6F3"
-    };
+    <script type="text/babel">
+        // --- 1. FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
+            authDomain: "clinicqueue-d9d3a.firebaseapp.com",
+            projectId: "clinicqueue-d9d3a",
+            storageBucket: "clinicqueue-d9d3a.firebasestorage.app",
+            messagingSenderId: "45318170672",
+            appId: "1:45318170672:web:3edd81acbb292c2889a5f5",
+            measurementId: "G-S5NEHZD6F3"
+        };
 
-    const CUSTOM_CHIME_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
-    const DEFAULT_ROOMS = ['Room 1', 'Room 2', 'Room 3', 'Nebuliser'];
-    const DEFAULT_HEADER = "KLINIK ARA 24 JAM";
-    const DEFAULT_FOOTER = "Moga segala urusan\ndimudahkan. Amin.";
+        const CUSTOM_CHIME_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+        const DEFAULT_ROOMS = ['Room 1', 'Room 2', 'Room 3', 'Nebuliser'];
+        const DEFAULT_HEADER = "KLINIK ARA 24 JAM";
+        const DEFAULT_FOOTER = "Moga segala urusan\ndimudahkan. Amin.";
 
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const db = firebase.firestore();
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
 
-    const saveRemarks = (branch, id, newRemarks) => {
-        db.collection("branches").doc(branch).collection("queue").doc(id).update({ remarks: newRemarks });
-    };
+        // --- 2. HELPERS ---
+        const saveRemarks = (branch, id, newRemarks) => {
+            db.collection("branches").doc(branch).collection("queue").doc(id).update({ remarks: newRemarks });
+        };
 
-    const compressImage = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800; 
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.6)); 
-                };
-                img.onerror = (err) => reject(err);
-            };
-            reader.onerror = (err) => reject(err);
-        });
-    };
+        // --- 3. MODALS & COMPONENTS ---
+        
+        const SettingsModal = ({ 
+            voiceSpeed, setVoiceSpeed, 
+            uiScale, setUiScale, 
+            setShowSettings, 
+            branch, rooms, ticketHeader, ticketFooter 
+        }) => {
+            const [localRooms, setLocalRooms] = React.useState(rooms || DEFAULT_ROOMS);
+            const [newRoom, setNewRoom] = React.useState('');
+            const [localHeader, setLocalHeader] = React.useState(ticketHeader || DEFAULT_HEADER);
+            const [localFooter, setLocalFooter] = React.useState(ticketFooter || DEFAULT_FOOTER);
 
-    // --- COMPONENTS ---
-    const SettingsModal = ({ 
-        voiceSpeed, setVoiceSpeed, uiScale, setUiScale, setShowSettings, 
-        branch, rooms, ticketHeader, ticketFooter 
-    }) => {
-        const [localRooms, setLocalRooms] = React.useState(rooms || DEFAULT_ROOMS);
-        const [newRoom, setNewRoom] = React.useState('');
-        const [localHeader, setLocalHeader] = React.useState(ticketHeader || DEFAULT_HEADER);
-        const [localFooter, setLocalFooter] = React.useState(ticketFooter || DEFAULT_FOOTER);
-        const [posterStatus, setPosterStatus] = React.useState('Upload Poster');
-        const [currentPoster, setCurrentPoster] = React.useState(null);
+            const handleAddRoom = () => {
+                if (newRoom.trim()) { setLocalRooms([...localRooms, newRoom.trim()]); setNewRoom(''); }
+            };
+            const handleRemoveRoom = (index) => {
+                const updated = localRooms.filter((_, i) => i !== index);
+                setLocalRooms(updated);
+            };
+            const handleSaveSettings = () => {
+                db.collection("branches").doc(branch).collection("settings").doc("config").set({
+                    rooms: localRooms, header: localHeader, footer: localFooter
+                }).then(() => setShowSettings(false));
+            };
 
-        React.useEffect(() => {
-            db.collection("branches").doc(branch).collection("settings").doc("promo").get()
-                .then(doc => { if(doc.exists) setCurrentPoster(doc.data().image); });
-        }, []);
+            return (
+                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm">
+                    <div className="bg-white p-8 rounded-3xl w-[500px] shadow-2xl max-h-[80vh] overflow-y-auto custom-scrollbar">
+                        <h3 className="font-bold text-xl mb-6 text-slate-800">System Configuration</h3>
+                        
+                        <div className="mb-6 p-4 bg-slate-50 rounded-xl">
+                            <h4 className="text-xs font-black text-slate-400 uppercase mb-3">General</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-[10px] font-bold uppercase mb-1">Voice Speed ({voiceSpeed}x)</label><input type="range" min="0.5" max="1.5" step="0.05" value={voiceSpeed} onChange={e => setVoiceSpeed(parseFloat(e.target.value))} className="w-full accent-blue-600" /></div>
+                                <div><label className="block text-[10px] font-bold uppercase mb-1">TV Scale ({uiScale}x)</label><input type="range" min="0.5" max="3.0" step="0.1" value={uiScale} onChange={e => setUiScale(parseFloat(e.target.value))} className="w-full accent-blue-600" /></div>
+                            </div>
+                        </div>
 
-        const handleAddRoom = () => { if (newRoom.trim()) { setLocalRooms([...localRooms, newRoom.trim()]); setNewRoom(''); } };
-        const handleRemoveRoom = (index) => { setLocalRooms(localRooms.filter((_, i) => i !== index)); };
-        
-        const handleImageUpload = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            setPosterStatus('Compressing...');
-            try {
-                const base64 = await compressImage(file);
-                setPosterStatus('Saving...');
-                await db.collection("branches").doc(branch).collection("settings").doc("promo").set({ image: base64 });
-                setCurrentPoster(base64);
-                setPosterStatus('Saved!');
-                setTimeout(() => setPosterStatus('Upload Poster'), 2000);
-            } catch (err) {
-                setPosterStatus('Error'); 
-                alert("Error processing image. Try another.");
-                console.error(err);
-            }
-        };
+                        <div className="mb-6 p-4 bg-slate-50 rounded-xl">
+                            <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Ticket Customization</h4>
+                            <label className="block text-[10px] font-bold uppercase mb-1">Clinic Name (Header)</label>
+                            <input value={localHeader} onChange={e => setLocalHeader(e.target.value)} className="w-full p-2 border rounded text-sm mb-3 font-bold" />
+                            <label className="block text-[10px] font-bold uppercase mb-1">Receipt Note (Footer)</label>
+                            <textarea value={localFooter} onChange={e => setLocalFooter(e.target.value)} className="w-full p-2 border rounded text-sm h-20 font-medium" />
+                        </div>
 
-        const handleRemovePoster = async () => {
-            if(confirm("Remove current poster?")) {
-                await db.collection("branches").doc(branch).collection("settings").doc("promo").delete();
-                setCurrentPoster(null);
-                setPosterStatus('Removed');
-            }
-        };
+                        <div className="mb-6 p-4 bg-slate-50 rounded-xl">
+                            <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Room Management</h4>
+                            <div className="flex gap-2 mb-3">
+                                <input placeholder="Add Room Name (e.g. X-Ray)" value={newRoom} onChange={e => setNewRoom(e.target.value)} className="flex-1 p-2 border rounded text-sm uppercase font-bold" />
+                                <button onClick={handleAddRoom} className="bg-blue-600 text-white px-4 rounded font-bold text-sm hover:bg-blue-700">+</button>
+                            </div>
+                            <div className="space-y-2">
+                                {localRooms.map((r, i) => (
+                                    <div key={i} className="flex justify-between items-center bg-white p-2 border rounded">
+                                        <span className="text-sm font-bold">{r}</span>
+                                        <button onClick={() => handleRemoveRoom(i)} className="text-red-500 font-black text-xs hover:bg-red-50 px-2 py-1 rounded">DEL</button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
-        const handleSaveSettings = () => {
-            db.collection("branches").doc(branch).collection("settings").doc("config").set({
-                rooms: localRooms, header: localHeader, footer: localFooter
-            }).then(() => setShowSettings(false));
-        };
+                        <button onClick={handleSaveSettings} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition">SAVE & CLOSE</button>
+                    </div>
+                </div>
+            );
+        };
 
-        return (
-            <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm">
-                <div className="bg-white p-8 rounded-3xl w-[500px] shadow-2xl max-h-[80vh] overflow-y-auto custom-scrollbar">
-                    <h3 className="font-bold text-xl mb-6 text-slate-800">System Configuration</h3>
-                    
-                    <div className="mb-6 p-4 bg-slate-50 rounded-xl">
-                        <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Promotional Poster (TV)</h4>
-                        {currentPoster ? (
-                            <img src={currentPoster} className="w-full h-32 object-cover rounded-lg mb-3 border-2 border-slate-200" />
-                        ) : (
-                            <div className="w-full h-32 bg-slate-200 rounded-lg mb-3 flex items-center justify-center text-xs font-bold text-slate-400">No Poster Active</div>
-                        )}
-                        <div className="flex gap-2 items-center">
-                            <label className="flex-1 cursor-pointer bg-blue-600 text-white py-2 px-4 rounded font-bold text-sm text-center hover:bg-blue-700 transition">
-                                {posterStatus}
-                                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                            </label>
-                            <button onClick={handleRemovePoster} className="bg-red-100 text-red-600 px-4 py-2 rounded font-bold text-sm hover:bg-red-200">Remove</button>
-                        </div>
-                    </div>
+        const RemarksModal = ({ patient, onClose, onConfirm }) => {
+            const [note, setNote] = React.useState('');
+            return (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
+                    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6">
+                        <h3 className="text-xl font-black text-slate-800 mb-4">Send to Pharmacy</h3>
+                        <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <span className="text-xs font-bold text-slate-400 uppercase">Patient</span>
+                            <div className="text-2xl font-black text-slate-900">#{patient.num} - {patient.name}</div>
+                        </div>
+                        <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Instructions for Pharmacist (Optional)</label>
+                        <textarea autoFocus rows="3" placeholder="Ex: Check BP before dispense..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full p-4 border-2 border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-blue-500 mb-6"></textarea>
+                        <div className="flex gap-3">
+                            <button onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold hover:bg-slate-200">CANCEL</button>
+                            <button onClick={() => onConfirm(note)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">SEND</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-                    <div className="mb-6 p-4 bg-slate-50 rounded-xl">
-                        <h4 className="text-xs font-black text-slate-400 uppercase mb-3">General</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-[10px] font-bold uppercase mb-1">Voice Speed ({voiceSpeed}x)</label><input type="range" min="0.5" max="1.5" step="0.05" value={voiceSpeed} onChange={e => setVoiceSpeed(parseFloat(e.target.value))} className="w-full accent-blue-600" /></div>
-                            <div><label className="block text-[10px] font-bold uppercase mb-1">TV Scale ({uiScale}x)</label><input type="range" min="0.5" max="3.0" step="0.1" value={uiScale} onChange={e => setUiScale(parseFloat(e.target.value))} className="w-full accent-blue-600" /></div>
-                        </div>
-                    </div>
+        const ClockDisplay = React.memo(() => {
+            const [now, setNow] = React.useState(new Date());
+            React.useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+            return (
+                <div className="text-center">
+                    <div className="text-7xl font-black text-blue-300 drop-shadow-md">{now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
+                    <div className="text-2xl font-bold text-white/80 uppercase mt-2 tracking-widest">{now.toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
+                    <div className="text-lg font-bold text-emerald-400 uppercase mt-1 tracking-widest">{new Intl.DateTimeFormat('en-US-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(now)}</div>
+                </div>
+            );
+        });
 
-                    <div className="mb-6 p-4 bg-slate-50 rounded-xl">
-                        <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Ticket Customization</h4>
-                        <label className="block text-[10px] font-bold uppercase mb-1">Clinic Name (Header)</label>
-                        <input value={localHeader} onChange={e => setLocalHeader(e.target.value)} className="w-full p-2 border rounded text-sm mb-3 font-bold" />
-                        <label className="block text-[10px] font-bold uppercase mb-1">Receipt Note (Footer)</label>
-                        <textarea value={localFooter} onChange={e => setLocalFooter(e.target.value)} className="w-full p-2 border rounded text-sm h-20 font-medium" />
-                    </div>
+        const StatusBadge = React.memo(({ status }) => {
+            let color = "bg-slate-100 text-slate-500";
+            let label = status;
+            if(status === 'calling') { color = "bg-red-100 text-red-600 animate-pulse"; label = "CALLING"; }
+            if(status === 'consulting') { color = "bg-green-100 text-green-700"; label = "IN ROOM"; }
+            if(status === 'pending') { color = "bg-orange-100 text-orange-600"; label = "PENDING"; }
+            if(status === 'collecting') { color = "bg-blue-100 text-blue-600"; label = "PHARMACY"; }
+            if(status === 'finished') { color = "bg-gray-200 text-gray-500"; label = "DONE"; }
+            return <span className={`text-[9px] font-black px-2 py-1 rounded uppercase text-center min-w-[70px] ${color}`}>{label}</span>;
+        });
 
-                    <div className="mb-6 p-4 bg-slate-50 rounded-xl">
-                        <h4 className="text-xs font-black text-slate-400 uppercase mb-3">Room Management</h4>
-                        <div className="flex gap-2 mb-3">
-                            <input placeholder="Add Room Name (e.g. X-Ray)" value={newRoom} onChange={e => setNewRoom(e.target.value)} className="flex-1 p-2 border rounded text-sm uppercase font-bold" />
-                            <button onClick={handleAddRoom} className="bg-blue-600 text-white px-4 rounded font-bold text-sm hover:bg-blue-700">+</button>
-                        </div>
-                        <div className="space-y-2">
-                            {localRooms.map((r, i) => (
-                                <div key={i} className="flex justify-between items-center bg-white p-2 border rounded">
-                                    <span className="text-sm font-bold">{r}</span>
-                                    <button onClick={() => handleRemoveRoom(i)} className="text-red-500 font-black text-xs hover:bg-red-50 px-2 py-1 rounded">DEL</button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+        const PharmacyToast = ({ patient, onClose }) => {
+            React.useEffect(() => { const timer = setTimeout(onClose, 5000); return () => clearTimeout(timer); }, []);
+            return (
+                <div className="fixed top-24 right-8 z-[200] toast-enter">
+                    <div className="bg-emerald-600 text-white p-6 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm">
+                        <div className="text-4xl">💊</div>
+                        <div><div className="text-xs font-bold opacity-75 uppercase tracking-widest">New Arrival</div><div className="text-2xl font-black">#{patient.num}</div><div className="font-bold">{patient.name}</div></div>
+                    </div>
+                </div>
+            );
+        };
 
-                    <button onClick={handleSaveSettings} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition">SAVE & CLOSE</button>
-                </div>
-            </div>
-        );
-    };
+        // --- 4. MAIN APPLICATION ---
+        function App() {
+            const [view, setView] = React.useState('reg');
+            const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
+            const [queue, setQueue] = React.useState([]);
+            
+            // Customizable Settings
+            const [rooms, setRooms] = React.useState(DEFAULT_ROOMS);
+            const [ticketHeader, setTicketHeader] = React.useState(DEFAULT_HEADER);
+            const [ticketFooter, setTicketFooter] = React.useState(DEFAULT_FOOTER);
 
-    const RemarksModal = ({ patient, onClose, onConfirm }) => {
-        const [note, setNote] = React.useState('');
-        return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
-                <div className="bg-white rounded-2xl w-full max-w-md p-6">
-                    <h3 className="text-xl font-black text-slate-800 mb-4">Send to Pharmacy</h3>
-                    <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100"><span className="text-xs font-bold text-slate-400 uppercase">Patient</span><div className="text-2xl font-black text-slate-900">#{patient.num} - {patient.name}</div></div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Instructions for Pharmacist (Optional)</label>
-                    <textarea autoFocus rows="3" placeholder="Ex: Check BP before dispense..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full p-4 border-2 border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-blue-500 mb-6"></textarea>
-                    <div className="flex gap-3"><button onClick={onClose} className="flex-1 py-3 bg-slate-100 font-bold rounded-xl">CANCEL</button><button onClick={() => onConfirm(note)} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl">SEND</button></div>
-                </div>
-            </div>
-        );
-    };
+            const [inputNum, setInputNum] = React.useState('');
+            const [inputName, setInputName] = React.useState('');
+            const [lastTicket, setLastTicket] = React.useState(null); 
+            const [remarksTarget, setRemarksTarget] = React.useState(null); 
+            const [pharmacyAlert, setPharmacyAlert] = React.useState(null); 
+            
+            const [voiceSpeed, setVoiceSpeed] = React.useState(parseFloat(localStorage.getItem('voice_speed')) || 0.85);
+            const [uiScale, setUiScale] = React.useState(parseFloat(localStorage.getItem('ui_scale')) || 1.0);
+            const [showSettings, setShowSettings] = React.useState(false);
+            const [sortNewest, setSortNewest] = React.useState(localStorage.getItem('sort_order') !== 'oldest');
+            const [audioOn, setAudioOn] = React.useState(false);
+            const [isCalling, setIsCalling] = React.useState(false); 
+            const [availableVoices, setAvailableVoices] = React.useState([]);
+            
+            const lastCallId = React.useRef(null);
+            const lastPharmacyId = React.useRef(null);
+            const chimeRef = React.useRef(new Audio(CUSTOM_CHIME_URL));
 
-    const PharmacyToast = ({ patient, onClose }) => {
-        React.useEffect(() => { const timer = setTimeout(onClose, 5000); return () => clearTimeout(timer); }, []);
-        return (
-            <div className="fixed top-24 right-8 z-[200] toast-enter">
-                <div className="bg-emerald-600 text-white p-6 rounded-2xl shadow-2xl flex items-center gap-4 max-w-sm"><div className="text-4xl">💊</div><div><div className="text-xs font-bold opacity-75 uppercase tracking-widest">New Arrival</div><div className="text-2xl font-black">#{patient.num}</div><div className="font-bold">{patient.name}</div></div></div>
-            </div>
-        );
-    };
+            React.useEffect(() => {
+                const loadVoices = () => setAvailableVoices(window.speechSynthesis.getVoices());
+                loadVoices();
+                if (window.speechSynthesis.onvoiceschanged !== undefined) window.speechSynthesis.onvoiceschanged = loadVoices;
+            }, []);
 
-    const ClockDisplay = React.memo(() => {
-        const [now, setNow] = React.useState(new Date());
-        React.useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
-        return (
-            <div className="text-center">
-                <div className="text-7xl font-black text-blue-300 drop-shadow-md">{now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
-                <div className="text-2xl font-bold text-white/80 uppercase mt-2 tracking-widest">{now.toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
-                <div className="text-lg font-bold text-emerald-400 uppercase mt-1 tracking-widest">{new Intl.DateTimeFormat('en-US-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(now)}</div>
-            </div>
-        );
-    });
+            // 1. Queue Listener
+            React.useEffect(() => {
+                localStorage.setItem('clinic_branch', branch);
+                const unsub = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").limit(150).onSnapshot(snap => {
+                    setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+                return () => unsub();
+            }, [branch, sortNewest]);
 
-    const StatusBadge = React.memo(({ status }) => {
-        let color = "bg-slate-100 text-slate-500";
-        if(status === 'calling') color = "bg-red-100 text-red-600 animate-pulse";
-        if(status === 'consulting') color = "bg-green-100 text-green-700";
-        if(status === 'pending') color = "bg-orange-100 text-orange-600";
-        if(status === 'collecting') color = "bg-blue-100 text-blue-600";
-        if(status === 'finished') color = "bg-gray-200 text-gray-500";
-        return <span className={`text-[9px] font-black px-2 py-1 rounded uppercase text-center min-w-[70px] ${color}`}>{status}</span>;
-    });
+            // 2. Settings Listener
+            React.useEffect(() => {
+                const unsubSettings = db.collection("branches").doc(branch).collection("settings").doc("config")
+                    .onSnapshot(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            if (data.rooms) setRooms(data.rooms);
+                            if (data.header) setTicketHeader(data.header);
+                            if (data.footer) setTicketFooter(data.footer);
+                        } else {
+                            db.collection("branches").doc(branch).collection("settings").doc("config").set({
+                                rooms: DEFAULT_ROOMS, header: DEFAULT_HEADER, footer: DEFAULT_FOOTER
+                            });
+                        }
+                    });
+                return () => unsubSettings();
+            }, [branch]);
 
-    // --- FIX: LiveMonitor with STRICT SIZING ---
-    const LiveMonitor = ({ isDark }) => (
-        <div className={`rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'glass-panel text-white' : 'bg-white'}`} style={{ maxHeight: '100%', minHeight: 0 }}>
-            <div className={`p-4 font-bold border-b text-[10px] uppercase tracking-widest flex justify-between ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}`}><span>{isDark ? 'Queue Monitor' : 'Branch Monitor'}</span></div>
-            <div className={`grid grid-cols-[0.6fr_1.5fr_1fr_1fr] px-4 py-3 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-white/50' : 'text-slate-400 bg-slate-50 border-b border-slate-100'}`}>
-                <div>No.</div><div>Name</div><div className="text-center">Status</div><div className="text-right">Loc</div>
-            </div>
-            {/* FIX: min-h-0 and flex-1 ensures this div scrolls instead of growing the parent */}
-            <div className="flex-1 custom-scrollbar min-h-0 overflow-y-auto">
-                <MonitorList isDark={isDark} />
-            </div>
-        </div>
-    );
+            const handleTapToActivate = () => {
+                setAudioOn(true);
+                chimeRef.current.play().then(() => { chimeRef.current.pause(); chimeRef.current.currentTime = 0; }).catch(e=>{});
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+            };
 
-    // Separated List to ensure proper rendering context
-    const MonitorList = ({ isDark }) => {
-        const [queue, setQueue] = React.useState([]);
-        const branch = localStorage.getItem('clinic_branch') || 'Kajang';
-        
-        React.useEffect(() => {
-            const unsub = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").limit(150).onSnapshot(snap => {
-                setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.time - a.time));
-            });
-            return () => unsub();
-        }, [branch]);
+            const runSequence = (num, loc) => {
+                setIsCalling(true);
+                setTimeout(() => setIsCalling(false), 10000); 
+                window.speechSynthesis.cancel();
+                chimeRef.current.pause(); chimeRef.current.currentTime = 0;
+                chimeRef.current.play().then(() => {
+                    chimeRef.current.onended = () => {
+                        chimeRef.current.onended = null;
+                        setTimeout(() => {
+                            const baseMessage = `Attention please. Number ${num}. Please proceed to ${loc}.`;
+                            const fullMessage = `${baseMessage} I repeat. ${baseMessage}`;
+                            const msg = new SpeechSynthesisUtterance(fullMessage);
+                            const femaleVoice = availableVoices.find(v => v.name.includes('Google US English')) || availableVoices.find(v => v.name.includes('Samantha')) || availableVoices.find(v => v.lang.includes('en') && v.name.toLowerCase().includes('female'));
+                            if (femaleVoice) msg.voice = femaleVoice;
+                            msg.lang = 'en-US'; msg.rate = voiceSpeed;
+                            msg.onend = () => { setTimeout(() => { chimeRef.current.currentTime = 0; chimeRef.current.play(); }, 300); };
+                            window.speechSynthesis.speak(msg);
+                        }, 500);
+                    };
+                }).catch(e => console.log("Sequence Error:", e));
+            };
 
-        return (
-            <>
-                {queue.map(p => (
-                    <div key={p.id} className={`grid grid-cols-[0.6fr_1.5fr_1fr_1fr] items-center p-4 border-b ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
-                        <span className={`${isDark ? 'text-4xl text-white' : 'text-xl'} font-black drop-shadow-sm`}>#{p.num}</span>
-                        <span className={`${isDark ? 'text-xl text-white' : 'text-[11px]'} font-bold uppercase truncate pr-2 tracking-wide`}>{p.name || '-'}</span>
-                        <div className="flex justify-center"><StatusBadge status={p.status} /></div>
-                        <span className={`text-right font-bold uppercase text-[12px] ${isDark?'text-emerald-300':'text-slate-500'}`}>{p.loc}</span>
-                    </div>
-                ))}
-            </>
-        );
-    };
+            // Queue Watcher
+            React.useEffect(() => {
+                const activeCallers = queue.filter(p => p.callTrigger);
+                const caller = activeCallers.sort((a,b) => b.callTrigger - a.callTrigger)[0];
+                if (view === 'tv' && audioOn && caller) {
+                    if (caller.callTrigger !== lastCallId.current) {
+                        const isFreshCall = (Date.now() - caller.callTrigger) < 15000;
+                        lastCallId.current = caller.callTrigger; 
+                        if (isFreshCall && (caller.status === 'calling' || caller.status === 'collecting')) {
+                            runSequence(caller.num, caller.loc);
+                        }
+                    }
+                }
+            }, [queue, view, audioOn]);
 
-    // --- MAIN APP ---
-    function App() {
-        const [view, setView] = React.useState('reg');
-        const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
-        const [queue, setQueue] = React.useState([]);
-        
-        // Settings State
-        const [rooms, setRooms] = React.useState(DEFAULT_ROOMS);
-        const [ticketHeader, setTicketHeader] = React.useState(DEFAULT_HEADER);
-        const [ticketFooter, setTicketFooter] = React.useState(DEFAULT_FOOTER);
-        const [promoImage, setPromoImage] = React.useState(null);
+            // Pharmacy Alert Watcher
+            React.useEffect(() => {
+                const newPharmacyPatients = queue.filter(p => p.status === 'collecting' && p.isNewToPharmacy === true);
+                if (newPharmacyPatients.length > 0) {
+                    const newest = newPharmacyPatients.sort((a,b) => b.time - a.time)[0];
+                    const isFresh = (Date.now() - newest.time) < 10000; 
+                    if (isFresh && newest.id !== lastPharmacyId.current) {
+                        lastPharmacyId.current = newest.id;
+                        if (view === 'pharmacy') { setPharmacyAlert(newest); }
+                    }
+                }
+            }, [queue, view]);
 
-        const [inputNum, setInputNum] = React.useState('');
-        const [inputName, setInputName] = React.useState('');
-        const [lastTicket, setLastTicket] = React.useState(null); 
-        const [remarksTarget, setRemarksTarget] = React.useState(null); 
-        const [pharmacyAlert, setPharmacyAlert] = React.useState(null); 
-        const [voiceSpeed, setVoiceSpeed] = React.useState(parseFloat(localStorage.getItem('voice_speed')) || 0.85);
-        const [uiScale, setUiScale] = React.useState(parseFloat(localStorage.getItem('ui_scale')) || 1.0);
-        const [showSettings, setShowSettings] = React.useState(false);
-        const [sortNewest, setSortNewest] = React.useState(localStorage.getItem('sort_order') !== 'oldest');
-        const [audioOn, setAudioOn] = React.useState(false);
-        const [isCalling, setIsCalling] = React.useState(false); 
-        const [availableVoices, setAvailableVoices] = React.useState([]);
-        const [showScreensaver, setShowScreensaver] = React.useState(false);
-        
-        const lastCallId = React.useRef(null);
-        const lastPharmacyId = React.useRef(null);
-        const lastInteraction = React.useRef(Date.now());
-        const chimeRef = React.useRef(new Audio(CUSTOM_CHIME_URL));
+            const qRef = db.collection("branches").doc(branch).collection("queue");
 
-        React.useEffect(() => {
-            const loadVoices = () => setAvailableVoices(window.speechSynthesis.getVoices());
-            loadVoices();
-            if (window.speechSynthesis.onvoiceschanged !== undefined) window.speechSynthesis.onvoiceschanged = loadVoices;
-        }, []);
+            const registerPatient = () => {
+                if (!inputNum) return;
+                setLastTicket({ num: inputNum, name: inputName || 'Patient' }); 
+                qRef.add({ num: parseInt(inputNum), name: inputName || '', status: 'waiting', loc: 'Waiting Area', time: Date.now(), sortOrder: 1 });
+                setInputNum(''); setInputName('');
+            };
 
-        // Listeners
-        React.useEffect(() => {
-            localStorage.setItem('clinic_branch', branch);
-            const unsubQueue = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").limit(150).onSnapshot(snap => {
-                setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                lastInteraction.current = Date.now(); setShowScreensaver(false);
-            });
-            const unsubConfig = db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
-                if (doc.exists) { const d = doc.data(); if(d.rooms) setRooms(d.rooms); if(d.header) setTicketHeader(d.header); if(d.footer) setTicketFooter(d.footer); }
-                else { db.collection("branches").doc(branch).collection("settings").doc("config").set({ rooms: DEFAULT_ROOMS, header: DEFAULT_HEADER, footer: DEFAULT_FOOTER }); }
-            });
-            const unsubPromo = db.collection("branches").doc(branch).collection("settings").doc("promo").onSnapshot(doc => {
-                if(doc.exists && doc.data().image) setPromoImage(doc.data().image); else setPromoImage(null);
-            });
-            return () => { unsubQueue(); unsubConfig(); unsubPromo(); };
-        }, [branch, sortNewest]);
+            const handlePrint = () => {
+                if (!lastTicket) { alert("Please register a patient first!"); return; }
+                const currentServing = queue.filter(p => p.status === 'calling' || p.status === 'consulting').sort((a,b) => b.callTrigger - a.callTrigger)[0];
+                const currentTurn = currentServing ? currentServing.num : "-";
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('en-GB'); 
+                const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-        // Screensaver Logic
-        React.useEffect(() => {
-            if (view !== 'tv' || !promoImage) return; 
-            const handleUserActivity = () => { lastInteraction.current = Date.now(); setShowScreensaver(false); };
-            window.addEventListener('mousemove', handleUserActivity);
-            window.addEventListener('keydown', handleUserActivity);
-            window.addEventListener('click', handleUserActivity);
+                // CodePen & iPad Safe Printing (Popup)
+                const printWindow = window.open('', '_blank', 'width=300,height=400');
+                printWindow.document.write(`
+                    <html>
+                    <head>
+                        <style>
+                            @page { size: 58mm auto; margin: 0; }
+                            body { font-family: 'Arial', sans-serif; margin: 0; padding: 5px; width: 48mm; text-align: center; }
+                            .header { font-size: 14px; font-weight: 800; margin-bottom: 5px; line-height: 1.1; }
+                            .divider { border-bottom: 1px dashed black; margin: 5px 0; }
+                            .label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 5px; }
+                            .big-num { font-size: 42px; font-weight: 900; line-height: 1; margin: 2px 0; letter-spacing: -1px; }
+                            .turn-box { border: 1px solid black; padding: 2px; margin: 5px 0; font-size: 10px; font-weight: bold; }
+                            .footer { font-size: 9px; font-style: italic; margin-top: 8px; line-height: 1.2; white-space: pre-wrap; }
+                            .timestamp { font-size: 9px; font-weight: bold; margin-top: 5px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">${ticketHeader}</div>
+                        <div class="divider"></div>
+                        <div class="label">NOMBOR GILIRAN</div>
+                        <div class="big-num">${lastTicket.num}</div>
+                        <div class="turn-box">NOMBOR SEMASA: ${currentTurn}</div>
+                        <div class="footer">${ticketFooter}</div>
+                        <div class="timestamp">${dateStr} - ${timeStr}</div>
+                        <script>
+                            window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+            };
 
-            const timer = setInterval(() => { if (Date.now() - lastInteraction.current > 20000) setShowScreensaver(true); }, 1000);
-            return () => { 
-                clearInterval(timer); 
-                window.removeEventListener('mousemove', handleUserActivity);
-                window.removeEventListener('keydown', handleUserActivity);
-                window.removeEventListener('click', handleUserActivity);
-            };
-        }, [view, promoImage]);
+            const updatePatient = (id, s, l, triggerCall = false, remarks = null) => {
+                const data = { status: s, loc: l, time: Date.now(), sortOrder: s === 'finished' ? 0 : 1 };
+                if (triggerCall) { data.callTrigger = Date.now(); data.isNewToPharmacy = false; }
+                else if (s === 'collecting') { data.isNewToPharmacy = true; } 
+                if (remarks !== null) { data.remarks = remarks; } 
+                qRef.doc(id).update(data);
+            };
 
-        const handleTapToActivate = () => {
-            setAudioOn(true);
-            chimeRef.current.play().then(() => { chimeRef.current.pause(); chimeRef.current.currentTime = 0; }).catch(e=>{});
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-        };
+            const initiatePharmacyTransfer = (patient) => { setRemarksTarget(patient); };
+            const confirmPharmacyTransfer = (note) => { if (remarksTarget) { updatePatient(remarksTarget.id, 'collecting', 'Pharmacy', false, note); setRemarksTarget(null); } };
+            const resetAll = () => { if(confirm(`Reset all data for ${branch}?`)) qRef.get().then(s => s.forEach(d => d.ref.delete())); };
 
-        const runSequence = (num, loc) => {
-            lastInteraction.current = Date.now(); setShowScreensaver(false);
-            setIsCalling(true); setTimeout(() => setIsCalling(false), 10000); 
-            window.speechSynthesis.cancel();
-            chimeRef.current.pause(); chimeRef.current.currentTime = 0;
-            chimeRef.current.play().then(() => {
-                chimeRef.current.onended = () => {
-                    chimeRef.current.onended = null;
-                    setTimeout(() => {
-                        const msg = new SpeechSynthesisUtterance(`Attention please. Number ${num}. Please proceed to ${loc}. I repeat. Number ${num}. to ${loc}.`);
-                        const femaleVoice = availableVoices.find(v => v.name.includes('Google US English')) || availableVoices.find(v => v.name.includes('Samantha'));
-                        if (femaleVoice) msg.voice = femaleVoice;
-                        msg.lang = 'en-US'; msg.rate = voiceSpeed;
-                        msg.onend = () => { setTimeout(() => { chimeRef.current.currentTime = 0; chimeRef.current.play(); }, 300); };
-                        window.speechSynthesis.speak(msg);
-                    }, 500);
-                };
-            }).catch(e => console.log("Audio Error:", e));
-        };
+            const sortedQueue = React.useMemo(() => [...queue].sort((a, b) => {
+                if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (b.sortOrder || 0) - (a.sortOrder || 0);
+                return sortNewest ? b.time - a.time : a.time - b.time;
+            }), [queue, sortNewest]);
 
-        React.useEffect(() => {
-            const activeCallers = queue.filter(p => p.callTrigger);
-            const caller = activeCallers.sort((a,b) => b.callTrigger - a.callTrigger)[0];
-            if (view === 'tv' && audioOn && caller) {
-                if (caller.callTrigger !== lastCallId.current) {
-                    const isFreshCall = (Date.now() - caller.callTrigger) < 15000;
-                    lastCallId.current = caller.callTrigger; 
-                    if (isFreshCall && (caller.status === 'calling' || caller.status === 'collecting')) runSequence(caller.num, caller.loc);
-                }
-            }
-        }, [queue, view, audioOn]);
+            const pharmacyQueue = React.useMemo(() => sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished'), [sortedQueue]);
+            const monitorQueue = React.useMemo(() => [...queue].sort((a,b) => b.time - a.time), [queue]);
 
-        React.useEffect(() => {
-            const newPharmacy = queue.filter(p => p.status === 'collecting' && p.isNewToPharmacy === true);
-            if (newPharmacy.length > 0) {
-                const newest = newPharmacy.sort((a,b) => b.time - a.time)[0];
-                if ((Date.now() - newest.time) < 10000 && newest.id !== lastPharmacyId.current) {
-                    lastPharmacyId.current = newest.id;
-                    if (view === 'pharmacy') setPharmacyAlert(newest);
-                }
-            }
-        }, [queue, view]);
+            return (
+                <div className={`app-interface h-screen flex flex-col ${view === 'tv' ? 'tv-dark' : 'bg-slate-50'}`}>
+                    {showSettings && <SettingsModal 
+                        voiceSpeed={voiceSpeed} setVoiceSpeed={setVoiceSpeed}
+                        uiScale={uiScale} setUiScale={setUiScale}
+                        setShowSettings={setShowSettings}
+                        branch={branch} rooms={rooms} ticketHeader={ticketHeader} ticketFooter={ticketFooter}
+                    />}
+                    
+                    {remarksTarget && <RemarksModal patient={remarksTarget} onClose={() => setRemarksTarget(null)} onConfirm={confirmPharmacyTransfer} />}
+                    {pharmacyAlert && <PharmacyToast patient={pharmacyAlert} onClose={() => setPharmacyAlert(null)} />}
 
-        const qRef = db.collection("branches").doc(branch).collection("queue");
-        const registerPatient = () => { if (!inputNum) return; setLastTicket({ num: inputNum, name: inputName || 'Patient' }); qRef.add({ num: parseInt(inputNum), name: inputName || '', status: 'waiting', loc: 'Waiting Area', time: Date.now(), sortOrder: 1 }); setInputNum(''); setInputName(''); };
-        
-        const handlePrint = () => {
-            if (!lastTicket) { alert("Register a patient first!"); return; }
-            const currentServing = queue.filter(p => p.status === 'calling' || p.status === 'consulting').sort((a,b) => b.callTrigger - a.callTrigger)[0];
-            const currentTurn = currentServing ? currentServing.num : "-";
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('en-GB'); const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            const printWindow = window.open('', '_blank', 'width=300,height=400');
-            printWindow.document.write(`<html><head><style>@page { size: 58mm auto; margin: 0; } body { font-family: 'Arial', sans-serif; margin: 0; padding: 5px; width: 48mm; text-align: center; } .header { font-size: 14px; font-weight: 800; margin-bottom: 5px; line-height: 1.1; } .divider { border-bottom: 1px dashed black; margin: 5px 0; } .label { font-size: 10px; font-weight: bold; text-transform: uppercase; margin-top: 5px; } .big-num { font-size: 42px; font-weight: 900; line-height: 1; margin: 2px 0; letter-spacing: -1px; } .turn-box { border: 1px solid black; padding: 2px; margin: 5px 0; font-size: 10px; font-weight: bold; } .footer { font-size: 9px; font-style: italic; margin-top: 8px; line-height: 1.2; white-space: pre-wrap; } .timestamp { font-size: 9px; font-weight: bold; margin-top: 5px; }</style></head><body><div class="header">${ticketHeader}</div><div class="divider"></div><div class="label">NOMBOR GILIRAN</div><div class="big-num">${lastTicket.num}</div><div class="turn-box">NOMBOR SEMASA: ${currentTurn}</div><div class="footer">${ticketFooter}</div><div class="timestamp">${dateStr} - ${timeStr}</div><script>window.onload=function(){window.print();setTimeout(function(){window.close();},500);}<\/script></body></html>`);
-            printWindow.document.close();
-        };
+                    <nav className={`global-nav ${view === 'tv' ? 'nav-dark' : 'nav-light'}`}>
+                        <div className="flex gap-8 items-center">
+                            <div className="flex flex-col justify-center">
+                                <span className={`clinic-header text-3xl ${view === 'tv' ? 'text-white' : ''}`}>KLINIK ARA 24 JAM</span>
+                                <span className="text-xs font-bold opacity-60 uppercase tracking-[0.2em] mt-1">{branch} Pro Edition</span>
+                            </div>
+                            <select value={branch} onChange={e => setBranch(e.target.value)} className={`border-none rounded-xl p-3 text-sm font-black uppercase outline-none cursor-pointer ${view === 'tv' ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'}`}>
+                                {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b} style={{color:'black'}}>{b}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className={`flex gap-2 p-2 rounded-2xl ${view === 'tv' ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                {['reg', 'doc', 'pharmacy', 'tv'].map(v => (
+                                    <button key={v} onClick={() => setView(v)} className={`px-6 py-3 rounded-xl text-xs font-black transition-all ${view === v ? 'bg-blue-600 text-white shadow-lg transform scale-105' : (view === 'tv' ? 'text-white/40 hover:text-white' : 'text-slate-500 hover:bg-slate-200')}`}>{v.toUpperCase()}</button>
+                                ))}
+                            </div>
+                            <button onClick={() => setShowSettings(true)} className={`p-4 rounded-xl ${view === 'tv' ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>⚙</button>
+                        </div>
+                    </nav>
 
-        const updatePatient = (id, s, l, triggerCall = false, remarks = null) => {
-            const data = { status: s, loc: l, time: Date.now(), sortOrder: s === 'finished' ? 0 : 1 };
-            if (triggerCall) { data.callTrigger = Date.now(); data.isNewToPharmacy = false; }
-            else if (s === 'collecting') { data.isNewToPharmacy = true; } 
-            if (remarks !== null) { data.remarks = remarks; } 
-            qRef.doc(id).update(data);
-        };
+                    {view === 'tv' ? (
+                        <div className="relative h-[calc(100vh-90px)] overflow-hidden">
+                            <div className="tv-wrapper-scaled" style={{ transform: `scale(${uiScale})` }}>
+                                <div className="tv-grid-inner">
+                                    <div className="flex flex-col items-center justify-center relative glass-panel rounded-[40px] p-8 gap-4">
+                                        {!audioOn && (
+                                            <div onClick={handleTapToActivate} className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center rounded-[40px] cursor-pointer backdrop-blur-md">
+                                                <button className="px-12 py-6 bg-blue-600 text-white rounded-full font-black text-2xl shadow-2xl animate-pulse pointer-events-none">TAP TO ACTIVATE AUDIO</button>
+                                            </div>
+                                        )}
+                                        <span className="text-blue-300 text-3xl font-black uppercase tracking-[0.3em] absolute top-6">Now Calling</span>
+                                        <div className={`font-black text-white leading-none drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)] ${isCalling ? 'animate-calling' : ''}`} style={{ fontSize: '26vh', marginTop: '20px' }}>
+                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '---'}
+                                        </div>
+                                        <div className="text-5xl font-bold text-white uppercase line-clamp-1 text-center w-full px-4 drop-shadow-md">
+                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || '...'}
+                                        </div>
+                                        <div className="text-6xl font-black text-emerald-400 uppercase text-center w-full drop-shadow-lg mt-2">
+                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.loc || 'Standby'}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-6">
+                                        <div className="glass-panel p-6 rounded-[40px] text-center shadow-2xl"><ClockDisplay /></div>
+                                        <LiveMonitor isDark={true} />
+                                    </div>
+                                </div>
+                                <div className="ticker-bar"><div className="ticker-move">Selamat datang ke KLINIK ARA 24 JAM. Mohon bersabar sehingga nombor dipanggil. Moga segala urusan tuan puan dimudahkan amin.</div></div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="admin-layout">
+                            <div className="bg-white rounded-[30px] border shadow-sm flex flex-col overflow-hidden">
+                                {view === 'reg' && (
+                                    <div className="flex flex-col h-full items-center justify-center p-8 overflow-y-auto custom-scrollbar">
+                                        <div className="w-full max-w-sm space-y-6">
+                                            <h1 className="text-4xl font-black text-slate-900 mb-10 text-center">Registration</h1>
+                                            <input placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
+                                            <input type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} className="w-full p-5 bg-white border border-slate-200 rounded-2xl text-6xl font-black text-center no-spinner" />
+                                            <div className="flex flex-col gap-3">
+                                                <button onClick={registerPatient} className="w-full py-5 bg-slate-950 text-white rounded-full font-black text-sm shadow-xl hover:scale-[1.02] transition">REGISTER PATIENT</button>
+                                                <button onClick={handlePrint} disabled={!lastTicket} className={`w-full py-4 border-2 rounded-full font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 ${!lastTicket ? 'border-slate-100 text-slate-300 cursor-not-allowed' : 'border-slate-900 text-slate-900 hover:bg-slate-50'}`}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 001.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
+                                                    {lastTicket ? `PRINT #${lastTicket.num}` : 'PRINT TICKET'}
+                                                </button>
+                                            </div>
+                                            <button onClick={resetAll} className="w-full py-3 border border-slate-100 text-slate-300 rounded-full font-bold text-[10px] hover:text-red-400 transition">Reset All Branch Data</button>
+                                        </div>
+                                    </div>
+                                )}
+                                {(view === 'doc' || view === 'pharmacy') && (
+                                    <div className="flex flex-col h-full">
+                                        <div className={`p-4 flex justify-between items-center text-white font-black text-[10px] uppercase tracking-widest ${view === 'pharmacy' ? 'bg-emerald-900' : 'bg-slate-900'}`}>
+                                            <span>{branch} {view === 'pharmacy' ? 'Pharmacy' : 'Doctor'}</span>
+                                            <span>{view === 'pharmacy' ? 'Ready for Collection' : 'Patient Queue'}</span>
+                                        </div>
+                                        <div className="flex-1 custom-scrollbar">
+                                            {(view === 'pharmacy' ? pharmacyQueue : sortedQueue).map(p => (
+                                                <div key={p.id} className={`p-4 border-b flex items-center justify-between transition ${p.status === 'finished' ? 'bg-slate-100 opacity-50 grayscale' : 'bg-white'}`}>
+                                                    <div className={`flex flex-col gap-1 ${view === 'pharmacy' ? 'w-[30%]' : 'w-2/5'}`}>
+                                                        <div className="flex items-center gap-2"><span className="text-3xl font-black">#{p.num}</span>
+                                                        {view === 'pharmacy' && p.isNewToPharmacy && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-new">NEW</span>}
+                                                        </div>
+                                                        {p.name && <span className="text-[10px] font-bold text-blue-600 uppercase">{p.name}</span>}
+                                                        <div className="flex items-center gap-2"><StatusBadge status={p.status} /><span className="text-[9px] font-black text-slate-400 uppercase">{p.loc}</span></div>
+                                                    </div>
+                                                    
+                                                    {/* PHARMACY DEDICATED REMARKS COLUMN */}
+                                                    {view === 'pharmacy' && (
+                                                        <div className="w-[30%] px-2">
+                                                            <textarea 
+                                                                defaultValue={p.remarks || ''}
+                                                                placeholder="Notes..."
+                                                                onBlur={(e) => saveRemarks(branch, p.id, e.target.value)}
+                                                                className="w-full bg-yellow-50 border border-yellow-200 rounded p-2 text-[10px] font-bold text-slate-700 outline-none focus:border-yellow-400 resize-none h-[60px]"
+                                                            ></textarea>
+                                                        </div>
+                                                    )}
 
-        const initiatePharmacyTransfer = (p) => setRemarksTarget(p);
-        const confirmPharmacyTransfer = (note) => { if (remarksTarget) { updatePatient(remarksTarget.id, 'collecting', 'Pharmacy', false, note); setRemarksTarget(null); } };
-        const resetAll = () => { if(confirm(`Reset data for ${branch}?`)) qRef.get().then(s => s.forEach(d => d.ref.delete())); };
-
-        const sortedQueue = React.useMemo(() => [...queue].sort((a, b) => {
-            if ((a.sortOrder || 0) !== (b.sortOrder || 0)) return (b.sortOrder || 0) - (a.sortOrder || 0);
-            return sortNewest ? b.time - a.time : a.time - b.time;
-        }), [queue, sortNewest]);
-        const pharmacyQueue = React.useMemo(() => sortedQueue.filter(p => p.status === 'collecting' || p.status === 'finished'), [sortedQueue]);
-        const monitorQueue = React.useMemo(() => [...queue].sort((a,b) => b.time - a.time), [queue]);
-
-        return (
-            <div className={`app-interface h-screen flex flex-col ${view === 'tv' ? 'tv-dark' : 'bg-slate-50'}`}>
-                {showSettings && <SettingsModal voiceSpeed={voiceSpeed} setVoiceSpeed={setVoiceSpeed} uiScale={uiScale} setUiScale={setUiScale} setShowSettings={setShowSettings} branch={branch} rooms={rooms} ticketHeader={ticketHeader} ticketFooter={ticketFooter} />}
-                {remarksTarget && <RemarksModal patient={remarksTarget} onClose={() => setRemarksTarget(null)} onConfirm={confirmPharmacyTransfer} />}
-                {pharmacyAlert && <PharmacyToast patient={pharmacyAlert} onClose={() => setPharmacyAlert(null)} />}
-                
-                {/* SCREENSAVER */}
-                <div className={`fixed inset-0 z-[100] bg-black flex items-center justify-center screensaver-layer ${showScreensaver && promoImage ? 'screensaver-active' : ''}`} onClick={() => { setShowScreensaver(false); lastInteraction.current = Date.now(); }}>
-                    {promoImage && <img src={promoImage} className="w-full h-full object-cover" />}
-                </div>
-
-                <nav className={`global-nav ${view === 'tv' ? 'nav-dark' : 'nav-light'}`}>
-                    <div className="flex gap-8 items-center">
-                        <div className="flex flex-col justify-center"><span className={`clinic-header text-3xl ${view === 'tv' ? 'text-white' : ''}`}>KLINIK ARA 24 JAM</span><span className="text-xs font-bold opacity-60 uppercase tracking-[0.2em] mt-1">{branch} Pro Edition</span></div>
-                        <select value={branch} onChange={e => setBranch(e.target.value)} className={`border-none rounded-xl p-3 text-sm font-black uppercase outline-none cursor-pointer ${view === 'tv' ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'}`}>{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b} style={{color:'black'}}>{b}</option>)}</select>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className={`flex gap-2 p-2 rounded-2xl ${view === 'tv' ? 'bg-white/5' : 'bg-slate-100'}`}>{['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-3 rounded-xl text-xs font-black transition-all ${view === v ? 'bg-blue-600 text-white shadow-lg transform scale-105' : (view === 'tv' ? 'text-white/40 hover:text-white' : 'text-slate-500 hover:bg-slate-200')}`}>{v.toUpperCase()}</button>)}</div>
-                        <button onClick={() => setShowSettings(true)} className={`p-4 rounded-xl ${view === 'tv' ? 'text-white/50 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>⚙</button>
-                    </div>
-                </nav>
-
-                {view === 'tv' ? (
-                    <div className="relative h-[calc(100vh-90px)] overflow-hidden">
-                        <div className="tv-wrapper-scaled" style={{ transform: `scale(${uiScale})` }}>
-                            <div className="tv-grid-inner">
-                                <div className="flex flex-col items-center justify-center relative glass-panel rounded-[40px] p-8 gap-4">
-                                    {!audioOn && <div onClick={handleTapToActivate} className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center rounded-[40px] cursor-pointer backdrop-blur-md"><button className="px-12 py-6 bg-blue-600 text-white rounded-full font-black text-2xl shadow-2xl animate-pulse pointer-events-none">TAP TO ACTIVATE AUDIO</button></div>}
-                                    <span className="text-blue-300 text-3xl font-black uppercase tracking-[0.3em] absolute top-6">Now Calling</span>
-                                    <div className={`font-black text-white leading-none drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)] ${isCalling ? 'animate-calling' : ''}`} style={{ fontSize: '26vh', marginTop: '20px' }}>{queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '---'}</div>
-                                    <div className="text-5xl font-bold text-white uppercase line-clamp-1 text-center w-full px-4 drop-shadow-md">{queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || '...'}</div>
-                                    <div className="text-6xl font-black text-emerald-400 uppercase text-center w-full drop-shadow-lg mt-2">{queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.loc || 'Standby'}</div>
-                                </div>
-                                <div className="flex flex-col gap-6"><div className="glass-panel p-6 rounded-[40px] text-center shadow-2xl"><ClockDisplay /></div><LiveMonitor isDark={true} /></div>
-                            </div>
-                            <div className="ticker-bar"><div className="ticker-move">Selamat datang ke KLINIK ARA 24 JAM. Mohon bersabar sehingga nombor dipanggil. Moga segala urusan tuan puan dimudahkan amin.</div></div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="admin-layout">
-                        <div className="bg-white rounded-[30px] border shadow-sm flex flex-col overflow-hidden">
-                            {view === 'reg' && (
-                                <div className="flex flex-col h-full items-center justify-center p-8 overflow-y-auto custom-scrollbar">
-                                    <div className="w-full max-w-sm space-y-6">
-                                        <h1 className="text-4xl font-black text-slate-900 mb-10 text-center">Registration</h1>
-                                        <input placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
-                                        <input type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} className="w-full p-5 bg-white border border-slate-200 rounded-2xl text-6xl font-black text-center no-spinner" />
-                                        <div className="flex flex-col gap-3">
-                                            <button onClick={registerPatient} className="w-full py-5 bg-slate-950 text-white rounded-full font-black text-sm shadow-xl hover:scale-[1.02] transition">REGISTER PATIENT</button>
-                                            <button onClick={handlePrint} disabled={!lastTicket} className={`w-full py-4 border-2 rounded-full font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 ${!lastTicket ? 'border-slate-100 text-slate-300 cursor-not-allowed' : 'border-slate-900 text-slate-900 hover:bg-slate-50'}`}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 001.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" /></svg>
-                                                {lastTicket ? `PRINT #${lastTicket.num}` : 'PRINT TICKET'}
-                                            </button>
-                                        </div>
-                                        <button onClick={resetAll} className="w-full py-3 border border-slate-100 text-slate-300 rounded-full font-bold text-[10px] hover:text-red-400 transition">Reset All Branch Data</button>
-                                    </div>
-                                </div>
-                            )}
-                            {(view === 'doc' || view === 'pharmacy') && (
-                                <div className="flex flex-col h-full">
-                                    <div className={`p-4 flex justify-between items-center text-white font-black text-[10px] uppercase tracking-widest ${view === 'pharmacy' ? 'bg-emerald-900' : 'bg-slate-900'}`}>
-                                        <span>{branch} {view === 'pharmacy' ? 'Pharmacy' : 'Doctor'}</span>
-                                        <span>{view === 'pharmacy' ? 'Ready for Collection' : 'Patient Queue'}</span>
-                                    </div>
-                                    <div className="flex-1 custom-scrollbar">
-                                        {(view === 'pharmacy' ? pharmacyQueue : sortedQueue).map(p => (
-                                            <div key={p.id} className={`p-4 border-b flex items-center justify-between transition ${p.status === 'finished' ? 'bg-slate-100 opacity-50 grayscale' : 'bg-white'}`}>
-                                                <div className={`flex flex-col gap-1 ${view === 'pharmacy' ? 'w-[30%]' : 'w-2/5'}`}>
-                                                    <div className="flex items-center gap-2"><span className="text-3xl font-black">#{p.num}</span>{view === 'pharmacy' && p.isNewToPharmacy && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-new">NEW</span>}</div>
-                                                    {p.name && <span className="text-[10px] font-bold text-blue-600 uppercase">{p.name}</span>}
-                                                    <div className="flex items-center gap-2"><StatusBadge status={p.status} /><span className="text-[9px] font-black text-slate-400 uppercase">{p.loc}</span></div>
-                                                </div>
-                                                {view === 'pharmacy' && (<div className="w-[30%] px-2"><textarea defaultValue={p.remarks || ''} placeholder="Notes..." onBlur={(e) => saveRemarks(branch, p.id, e.target.value)} className="w-full bg-yellow-50 border border-yellow-200 rounded p-2 text-[10px] font-bold text-slate-700 outline-none focus:border-yellow-400 resize-none h-[60px]"></textarea></div>)}
-                                                <div className={`flex gap-1 flex-wrap justify-end ${view === 'pharmacy' ? 'w-[40%]' : 'max-w-[55%]'}`}>
-                                                    {view === 'doc' ? (
-                                                        <><div className="flex gap-1 flex-wrap justify-end">{rooms.map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black uppercase">CALL {r.replace('Room ','R')}</button>)}</div>{p.status === 'calling' && <><button onClick={() => updatePatient(p.id, 'consulting', p.loc, false)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-[9px] font-black">IN ROOM</button><button onClick={() => updatePatient(p.id, 'pending', 'Waiting Area', false)} className="bg-orange-500 text-white px-3 py-2 rounded-lg text-[9px] font-black">PENDING</button></>}{(p.status === 'calling' || p.status === 'consulting' || p.status === 'pending') && <button onClick={() => initiatePharmacyTransfer(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black">TO DISP</button>}</>
-                                                    ) : (
-                                                        <><button onClick={() => updatePatient(p.id, 'collecting', 'Medication Counter', true)} className="bg-emerald-600 text-white px-4 py-3 rounded-lg text-[9px] font-black">CALL COUNTER</button><button onClick={() => updatePatient(p.id, 'finished', 'Done', false)} className="bg-slate-800 text-white px-4 py-3 rounded-lg text-[9px] font-black">MARK DONE</button></>
-                                                    )}
-                                                    <button onClick={() => { if(confirm("Remove?")) qRef.doc(p.id).delete(); }} className="text-slate-300 px-2 font-black">✕</button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {view === 'pharmacy' && pharmacyQueue.length === 0 && <div className="p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No patients</div>}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <LiveMonitor isDark={false} />
-                    </div>
-                )}
-            </div>
-        );
-    }
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
+                                                    <div className={`flex gap-1 flex-wrap justify-end ${view === 'pharmacy' ? 'w-[40%]' : 'max-w-[55%]'}`}>
+                                                        {view === 'doc' ? (
+                                                            <>
+                                                                <div className="flex gap-1 flex-wrap justify-end">{rooms.map((r,i) => <button key={i} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-[9px] font-black uppercase">CALL {r.replace('Room ','R')}</button>)}</div>
+                                                                {p.status === 'calling' && <><button onClick={() => updatePatient(p.id, 'consulting', p.loc, false)} className="bg-green-600 text-white px-3 py-2 rounded-lg text-[9px] font-black">IN ROOM</button><button onClick={() => updatePatient(p.id, 'pending', 'Waiting Area', false)} className="bg-orange-500 text-white px-3 py-2 rounded-lg text-[9px] font-black">PENDING</button></>}
+                                                                {(p.status === 'calling' || p.status === 'consulting' || p.status === 'pending') && <button onClick={() => initiatePharmacyTransfer(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[9px] font-black">TO DISP</button>}
+                                                            </>
+                                                        ) : (
+                                                            <><button onClick={() => updatePatient(p.id, 'collecting', 'Medication Counter', true)} className="bg-emerald-600 text-white px-4 py-3 rounded-lg text-[9px] font-black">CALL COUNTER</button><button onClick={() => updatePatient(p.id, 'finished', 'Done', false)} className="bg-slate-800 text-white px-4 py-3 rounded-lg text-[9px] font-black">MARK DONE</button></>
+                                                        )}
+                                                        <button onClick={() => { if(confirm("Remove?")) qRef.doc(p.id).delete(); }} className="text-slate-300 px-2 font-black">✕</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {view === 'pharmacy' && pharmacyQueue.length === 0 && <div className="p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No patients</div>}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <LiveMonitor isDark={false} />
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
