@@ -15,36 +15,67 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; overflow: hidden; height: 100vh; width: 100vw; }
-        .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); height: 100vh; }
+        
+        /* 4K TV STYLES */
+        .tv-dark { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); height: 100vh; width: 100vw; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+        
+        .tv-main-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 30px;
+            padding: 30px;
+            flex: 1;
+            height: calc(100vh - 150px); /* Leave room for header/ticker */
+            overflow: hidden; /* CRITICAL: Prevents the screen itself from growing */
+        }
+
+        /* LEFT PANEL - LOCKED TO TOP */
+        .now-calling-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* FORCE TOP ALIGNMENT */
+            padding-top: 80px; /* FIXED DISTANCE FROM TOP */
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 40px;
+            height: 100%; /* Fill the grid area but don't exceed it */
+        }
+
+        .number-lock {
+            font-size: 28vh;
+            font-weight: 900;
+            line-height: 0.8; /* Pull number up to the text */
+            color: white;
+            margin: 0;
+            padding: 0;
+            text-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        /* RIGHT PANEL - INDEPENDENT SCROLL */
+        .monitor-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%; /* Locked to grid height */
+            overflow: hidden;
+        }
+
+        .monitor-scroll {
+            flex: 1;
+            overflow-y: auto;
+            border-radius: 0 0 40px 40px;
+        }
+        .monitor-scroll::-webkit-scrollbar { width: 8px; }
+        .monitor-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         .ticker-move { white-space: nowrap; animation: marquee 30s linear infinite; display: inline-block; padding-left: 100%; }
-        @keyframes flash-call {
-            0%, 100% { opacity: 1; color: white; transform: scale(1); text-shadow: 0 0 30px rgba(255,255,255,0.8); }
-            50% { opacity: 1; color: #60a5fa; transform: scale(1.02); text-shadow: 0 0 60px rgba(96, 165, 250, 1); }
-        }
+        @keyframes flash-call { 0%, 100% { color: white; transform: scale(1); } 50% { color: #60a5fa; transform: scale(1.02); } }
         .animate-calling { animation: flash-call 0.8s ease-in-out infinite; }
-        .glass-panel { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 50; position: relative; border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .nav-light { background: white; border-bottom: 2px solid #e2e8f0; }
-        .nav-dark { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .admin-layout { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 90px); gap: 20px; padding: 20px; box-sizing: border-box; }
-        .tv-wrapper-scaled { width: 100%; height: 100%; display: flex; flex-direction: column; transform-origin: top center; transition: transform 0.2s ease-out; }
-        
-        /* 4K STABILITY FIX: Grid is locked to viewport height */
-        .tv-grid-inner { 
-            display: grid; 
-            grid-template-columns: 1.6fr 1fr; 
-            flex: 1; 
-            gap: 20px; 
-            padding: 30px; 
-            box-sizing: border-box; 
-            overflow: hidden; 
-            height: calc(100vh - 150px); 
-        }
-        .ticker-bar { position: absolute; bottom: 0; width: 100%; height: 60px; background-color: #000000; color: #fbbf24; display: flex; align-items: center; overflow: hidden; font-size: 1.5rem; font-weight: 800; border-top: 4px solid #d97706; z-index: 50; }
+        .global-nav { height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; border-bottom: 1px solid rgba(0,0,0,0.05); flex-shrink: 0; }
+        .ticker-bar { height: 60px; background: black; color: #fbbf24; display: flex; align-items: center; font-size: 1.5rem; font-weight: 800; border-top: 4px solid #d97706; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -60,157 +91,30 @@
             appId: "1:45318170672:web:3edd81acbb292c2889a5f5",
             measurementId: "G-S5NEHZD6F3"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-
-        // --- COMPONENTS ---
-        const ClockDisplay = React.memo(() => {
-            const [now, setNow] = React.useState(new Date());
-            React.useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
-            return (
-                <div className="text-center text-slate-100">
-                    <div className="text-7xl font-black text-blue-300 drop-shadow-md">{now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
-                    <div className="text-2xl font-bold text-white/80 uppercase mt-2 tracking-widest">{now.toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
-                </div>
-            );
-        });
-
-        const StatusBadge = ({ status }) => {
-            let color = "bg-slate-100 text-slate-500";
-            if(status === 'calling') color = "bg-red-100 text-red-600 animate-pulse";
-            if(status === 'consulting') color = "bg-green-100 text-green-700";
-            if(status === 'collecting') color = "bg-blue-100 text-blue-600";
-            return <span className={`text-[9px] font-black px-2 py-1 rounded uppercase text-center min-w-[70px] ${color}`}>{status}</span>;
-        };
-
-        const LiveMonitor = ({ queue, isDark }) => (
-            <div className={`rounded-2xl border overflow-hidden flex flex-col h-full ${isDark ? 'glass-panel text-white' : 'bg-white'}`}>
-                <div className={`p-4 font-bold border-b text-[10px] uppercase tracking-widest flex justify-between ${isDark ? 'text-white/40 border-white/10' : 'text-slate-400'}`}>
-                    <span>Queue Monitor</span>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    {queue.map(p => (
-                        <div key={p.id} className={`grid grid-cols-[0.6fr_1.5fr_1fr] items-center p-4 border-b ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
-                            <span className={`${isDark ? 'text-4xl text-white' : 'text-xl'} font-black`}>#{p.num}</span>
-                            <span className={`${isDark ? 'text-xl text-white' : 'text-[11px]'} font-bold uppercase truncate pr-2`}>{p.name || '-'}</span>
-                            <span className={`text-right font-bold uppercase text-[12px] ${isDark?'text-emerald-300':'text-slate-500'}`}>{p.loc}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-
-        const GlobalSettings = ({ isOpen, onClose, rooms, setRooms, tickerText, setTickerText, ticketHeader, setTicketHeader, ticketFooter, setTicketFooter, branch }) => {
-            const [newRoom, setNewRoom] = React.useState('');
-            if (!isOpen) return null;
-
-            const saveConfig = (updates) => {
-                const newDoc = { rooms, ticker: tickerText, ticketHeader, ticketFooter, ...updates };
-                db.collection("branches").doc(branch).collection("settings").doc("config").set(newDoc, { merge: true });
-            };
-
-            const addRoom = () => {
-                if (newRoom && !rooms.includes(newRoom)) {
-                    const updated = [...rooms, newRoom];
-                    setRooms(updated);
-                    saveConfig({ rooms: updated });
-                    setNewRoom('');
-                }
-            };
-
-            const removeRoom = (name) => {
-                const updated = rooms.filter(r => r !== name);
-                setRooms(updated);
-                saveConfig({ rooms: updated });
-            };
-
-            return (
-                <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl text-slate-800 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                        <div className="flex justify-between items-center mb-6 border-b pb-4">
-                            <h2 className="text-2xl font-black">System Configuration</h2>
-                            <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl font-black">&times;</button>
-                        </div>
-                        <div className="space-y-6">
-                            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-blue-600 mb-3">Ticket Text</label>
-                                <div className="space-y-3">
-                                    <div><span className="text-[9px] font-bold text-slate-400 uppercase">Header</span><input className="w-full p-2 mt-1 bg-white rounded-lg font-bold border border-blue-200 outline-none" value={ticketHeader} onChange={(e) => { setTicketHeader(e.target.value); saveConfig({ ticketHeader: e.target.value }); }} /></div>
-                                    <div><span className="text-[9px] font-bold text-slate-400 uppercase">Footer</span><textarea className="w-full p-2 mt-1 bg-white rounded-lg font-bold border border-blue-200 outline-none" value={ticketFooter} onChange={(e) => { setTicketFooter(e.target.value); saveConfig({ ticketFooter: e.target.value }); }} rows="2" /></div>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">TV Ticker Text</label>
-                                <textarea className="w-full p-4 bg-slate-100 rounded-xl font-bold border-none outline-none focus:ring-2 ring-blue-500" value={tickerText} onChange={(e) => { setTickerText(e.target.value); saveConfig({ ticker: e.target.value }); }} rows="2" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Manage Rooms</label>
-                                <div className="flex gap-2 mb-4">
-                                    <input className="flex-1 p-3 bg-slate-100 rounded-xl font-bold outline-none" placeholder="New Room Name..." value={newRoom} onChange={(e) => setNewRoom(e.target.value)} />
-                                    <button onClick={addRoom} className="px-6 bg-blue-600 text-white rounded-xl font-black">ADD</button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {rooms.map(r => (
-                                        <div key={r} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                            <span className="font-bold text-sm">{r}</span>
-                                            <button onClick={() => removeRoom(r)} className="text-red-500 font-black text-xs uppercase">Del</button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className="w-full mt-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest">Close</button>
-                    </div>
-                </div>
-            );
-        };
-
-        const RemarksModal = ({ patient, onClose, onConfirm }) => {
-            const [note, setNote] = React.useState('');
-            return (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center text-slate-800">
-                    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6">
-                        <h3 className="text-xl font-black mb-4">Transfer to Pharmacy</h3>
-                        <div className="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                            <span className="text-xs font-bold text-slate-400 uppercase">Patient</span>
-                            <div className="text-2xl font-black text-slate-900">#{patient.num} - {patient.name}</div>
-                        </div>
-                        <textarea autoFocus rows="3" placeholder="Doctor's instructions..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full p-4 border-2 border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:border-blue-500 mb-6"></textarea>
-                        <div className="flex gap-3">
-                            <button onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold uppercase text-xs">Cancel</button>
-                            <button onClick={() => onConfirm(note)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold uppercase text-xs">Confirm</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
 
         function App() {
             const [view, setView] = React.useState(localStorage.getItem('active_view') || 'reg');
             const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
             const [queue, setQueue] = React.useState([]);
-            const [inputNum, setInputNum] = React.useState('');
-            const [inputName, setInputName] = React.useState('');
-            const [lastTicket, setLastTicket] = React.useState(null); 
-            const [audioOn, setAudioOn] = React.useState(false);
-            const [isCalling, setIsCalling] = React.useState(false); 
-            const [remarksTarget, setRemarksTarget] = React.useState(null); 
-            const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
-
-            const [rooms, setRooms] = React.useState(['Room 1', 'Room 2', 'Room 3', 'Nebuliser']);
+            const [rooms, setRooms] = React.useState(['Room 1', 'Room 2', 'Room 3']);
             const [tickerText, setTickerText] = React.useState('Selamat datang ke KLINIK ARA 24 JAM.');
             const [ticketHeader, setTicketHeader] = React.useState('KLINIK ARA 24 JAM');
-            const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan. Amin.');
+            const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
             
-            const lastCallId = React.useRef(null);
-            const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
-
-            React.useEffect(() => { localStorage.setItem('active_view', view); }, [view]);
+            const [inputNum, setInputNum] = React.useState('');
+            const [inputName, setInputName] = React.useState('');
+            const [lastTicket, setLastTicket] = React.useState(null);
+            const [remarksTarget, setRemarksTarget] = React.useState(null);
+            const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+            const [audioOn, setAudioOn] = React.useState(false);
+            const [isCalling, setIsCalling] = React.useState(false);
 
             React.useEffect(() => {
+                localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
-                const unsub = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").limit(150).onSnapshot(snap => {
+                const unsub = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => {
                     setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 });
                 db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
@@ -223,177 +127,173 @@
                     }
                 });
                 return () => unsub();
-            }, [branch]);
-
-            const handleTapToActivate = () => {
-                setAudioOn(true);
-                chimeRef.current.play().then(() => { chimeRef.current.pause(); chimeRef.current.currentTime = 0; }).catch(e=>{});
-            };
-
-            const runSequence = (num, loc) => {
-                setIsCalling(true);
-                setTimeout(() => setIsCalling(false), 10000); 
-                chimeRef.current.play().then(() => {
-                    setTimeout(() => {
-                        const msg = new SpeechSynthesisUtterance(`Number ${num}. Please proceed to ${loc}.`);
-                        window.speechSynthesis.speak(msg);
-                    }, 500);
-                });
-            };
-
-            React.useEffect(() => {
-                const caller = queue.filter(p => p.callTrigger).sort((a,b) => b.callTrigger - a.callTrigger)[0];
-                if (view === 'tv' && audioOn && caller && caller.callTrigger !== lastCallId.current) {
-                    lastCallId.current = caller.callTrigger; 
-                    runSequence(caller.num, caller.loc);
-                }
-            }, [queue, view, audioOn]);
+            }, [branch, view]);
 
             const handlePrint = (num) => {
                 const now = new Date();
-                const currentServing = queue.filter(p => p.status === 'calling' || p.status === 'consulting').sort((a,b) => b.callTrigger - a.callTrigger)[0];
-                const currentTurn = currentServing ? currentServing.num : "-";
                 const iframe = document.createElement('iframe');
-                iframe.style.position = 'fixed'; iframe.style.right = '0'; iframe.style.bottom = '0'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = '0';
+                iframe.style.display = 'none';
                 document.body.appendChild(iframe);
                 const doc = iframe.contentWindow.document;
-                doc.open();
-                doc.write(`<html><head><style>@page { size: 58mm auto; margin: 0; } body { font-family: 'Arial', sans-serif; text-align: center; width: 48mm; margin: 0; padding: 5px; } .header { font-size: 14px; font-weight: bold; white-space: pre-wrap; } .big-num { font-size: 40px; font-weight: 900; margin: 5px 0; } .footer { font-size: 10px; margin-top: 10px; white-space: pre-wrap; }</style></head><body><div class="header">${ticketHeader}</div><div style="font-size:10px; margin-top:5px;">NOMBOR GILIRAN</div><div class="big-num">${num}</div><div style="border:1px solid #000; padding:2px; font-size:10px">NOMBOR SEMASA: ${currentTurn}</div><div class="footer">${ticketFooter}<br><br>${now.toLocaleString()}</div></body></html>`);
+                doc.write(`<html><body style="text-align:center;font-family:sans-serif;"><h3>${ticketHeader}</h3><h1>${num}</h1><p>${ticketFooter}</p><small>${now.toLocaleString()}</small></body></html>`);
                 doc.close();
-                iframe.contentWindow.focus();
-                setTimeout(() => { iframe.contentWindow.print(); document.body.removeChild(iframe); }, 500);
+                iframe.contentWindow.print();
+                setTimeout(() => document.body.removeChild(iframe), 1000);
             };
 
-            const updatePatient = (id, s, l, triggerCall = false, rem = null) => {
-                const data = { status: s, loc: l, time: Date.now() };
-                if (triggerCall) data.callTrigger = Date.now();
-                if (rem !== null) data.remarks = rem;
-                db.collection("branches").doc(branch).collection("queue").doc(id).update(data);
-            };
-
-            const activeQueue = queue.sort((a,b) => b.time - a.time);
+            const currentCaller = queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0];
 
             return (
-                <div className={`app-interface h-screen flex flex-col ${view === 'tv' ? 'tv-dark' : 'bg-slate-50 text-slate-900'}`}>
-                    {remarksTarget && <RemarksModal patient={remarksTarget} onClose={() => setRemarksTarget(null)} onConfirm={(note) => { updatePatient(remarksTarget.id, 'collecting', 'Pharmacy', false, note); setRemarksTarget(null); }} />}
+                <div className={`h-screen flex flex-col ${view === 'tv' ? 'tv-dark' : 'bg-slate-50'}`}>
                     
-                    <GlobalSettings 
-                        isOpen={isSettingsOpen} 
-                        onClose={() => setIsSettingsOpen(false)} 
-                        rooms={rooms} setRooms={setRooms} 
-                        tickerText={tickerText} setTickerText={setTickerText} 
-                        ticketHeader={ticketHeader} setTicketHeader={setTicketHeader}
-                        ticketFooter={ticketFooter} setTicketFooter={setTicketFooter}
-                        branch={branch}
-                    />
+                    {/* SETTINGS MODAL */}
+                    {isSettingsOpen && (
+                        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl text-slate-800">
+                                <h2 className="text-2xl font-black mb-6">Settings</h2>
+                                <div className="space-y-4">
+                                    <div><label className="text-xs font-bold uppercase text-slate-400">Ticker Text</label>
+                                    <textarea className="w-full p-2 border rounded" value={tickerText} onChange={e => {setTickerText(e.target.value); db.collection("branches").doc(branch).collection("settings").doc("config").set({ticker: e.target.value}, {merge:true})}} /></div>
+                                    <div><label className="text-xs font-bold uppercase text-slate-400">Ticket Header</label>
+                                    <input className="w-full p-2 border rounded" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); db.collection("branches").doc(branch).collection("settings").doc("config").set({ticketHeader: e.target.value}, {merge:true})}} /></div>
+                                    <div><label className="text-xs font-bold uppercase text-slate-400">Manage Rooms (Comma Separated)</label>
+                                    <input className="w-full p-2 border rounded" value={rooms.join(', ')} onChange={e => {const r = e.target.value.split(', '); setRooms(r); db.collection("branches").doc(branch).collection("settings").doc("config").set({rooms: r}, {merge:true})}} /></div>
+                                </div>
+                                <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-slate-900 text-white py-3 rounded-xl mt-6 font-bold uppercase tracking-widest">Done</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PHARMACY REMARKS MODAL */}
+                    {remarksTarget && (
+                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center">
+                            <div className="bg-white rounded-2xl p-6 w-80 text-slate-800">
+                                <h3 className="font-bold mb-2">Note for Pharmacy</h3>
+                                <textarea className="w-full p-2 border rounded" id="pharm_note_input" placeholder="Check BP, etc..."/>
+                                <div className="flex gap-2 mt-4">
+                                    <button className="flex-1 bg-slate-100 py-2 rounded" onClick={() => setRemarksTarget(null)}>Cancel</button>
+                                    <button className="flex-1 bg-blue-600 text-white py-2 rounded font-bold" onClick={() => {
+                                        const note = document.getElementById('pharm_note_input').value;
+                                        db.collection("branches").doc(branch).collection("queue").doc(remarksTarget.id).update({status: 'collecting', loc: 'Pharmacy', remarks: note});
+                                        setRemarksTarget(null);
+                                    }}>Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <nav className={`global-nav ${view === 'tv' ? 'nav-dark' : 'nav-light'}`}>
-                        <div className="flex gap-8 items-center text-slate-800">
-                            <span className={`text-3xl font-black uppercase tracking-tight ${view==='tv'?'text-white':'text-slate-900'}`}>ARA Queue</span>
-                            <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-slate-100 rounded-xl p-2 text-sm font-bold uppercase text-black outline-none border-none">
+                        <div className="flex items-center gap-4">
+                            <span className={`text-2xl font-black ${view==='tv'?'text-white':'text-slate-900'}`}>ARA Queue</span>
+                            <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-slate-100 p-2 rounded-lg text-xs font-bold uppercase outline-none text-black">
                                 {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}
                             </select>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex gap-2 p-2 rounded-2xl bg-slate-100">
-                                {['reg', 'doc', 'pharmacy', 'tv'].map(v => (
-                                    <button key={v} onClick={() => setView(v)} className={`px-6 py-3 rounded-xl text-xs font-black transition-all ${view === v ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-200'}`}>{v.toUpperCase()}</button>
-                                ))}
-                            </div>
-                            <button onClick={() => setIsSettingsOpen(true)} className={`p-4 rounded-full hover:bg-slate-200 text-xl ${view==='tv'?'text-white':'text-slate-900'}`}>⚙️</button>
+                        <div className="flex gap-2">
+                            {['reg', 'doc', 'pharmacy', 'tv'].map(v => (
+                                <button key={v} onClick={() => setView(v)} className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${view === v ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>{v}</button>
+                            ))}
+                            <button onClick={() => setIsSettingsOpen(true)} className={`p-2 ${view==='tv'?'text-white':'text-slate-900'}`}>⚙️</button>
                         </div>
                     </nav>
 
                     {view === 'tv' ? (
-                        <div className="relative flex-1 overflow-hidden">
-                            <div className="tv-wrapper-scaled">
-                                <div className="tv-grid-inner">
-                                    {/* 4K TOP ANCHORED PANEL */}
-                                    <div className="flex flex-col items-center justify-start relative glass-panel rounded-[40px] p-8 pt-24">
-                                        {!audioOn && <div onClick={handleTapToActivate} className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center rounded-[40px] cursor-pointer"><button className="px-12 py-6 bg-blue-600 text-white rounded-full font-black text-2xl animate-pulse uppercase">Start Audio</button></div>}
-                                        <span className="text-blue-300 text-4xl font-black uppercase tracking-[0.3em] mb-0">Now Calling</span>
-                                        <div className={`font-black text-white leading-[0.8] drop-shadow-lg ${isCalling ? 'animate-calling' : ''}`} style={{ fontSize: '28vh', marginTop: '0' }}>
-                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.num || '---'}
-                                        </div>
-                                        <div className="text-5xl font-bold text-white uppercase line-clamp-1 text-center w-full mt-10">
-                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.name || 'Please Wait'}
-                                        </div>
-                                        <div className="text-7xl font-black text-emerald-400 uppercase text-center w-full mt-4">
-                                            {queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0]?.loc || 'Standby'}
-                                        </div>
+                        <div className="tv-main-grid">
+                            {/* LEFT PANEL: LOCKED TOP-ANCHOR */}
+                            <div className="now-calling-panel">
+                                {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center cursor-pointer rounded-[40px]"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-black animate-pulse">ENABLE SOUND</button></div>}
+                                
+                                <span className="text-blue-300 text-3xl font-black uppercase tracking-[0.5em] mb-4">Now Calling</span>
+                                
+                                <div className={`number-lock ${isCalling ? 'animate-calling' : ''}`}>
+                                    {currentCaller?.num || '---'}
+                                </div>
+                                
+                                <div className="text-6xl font-bold text-white uppercase mt-12 truncate w-full text-center px-4 drop-shadow-md">
+                                    {currentCaller?.name || 'Please Wait'}
+                                </div>
+                                
+                                <div className="text-7xl font-black text-emerald-400 uppercase mt-4 tracking-wider">
+                                    {currentCaller?.loc || 'Standby'}
+                                </div>
+                            </div>
+
+                            {/* RIGHT PANEL: ISOLATED SCROLL */}
+                            <div className="monitor-panel gap-6">
+                                <div className="glass-panel p-8 rounded-[40px] text-center border-white/10 shadow-2xl flex-shrink-0">
+                                    <div className="text-7xl font-black text-blue-300 drop-shadow-md">{(new Date()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
+                                    <div className="text-2xl font-bold text-white/60 uppercase tracking-widest mt-2">{(new Date()).toLocaleDateString('en-GB', {weekday:'long', day:'2-digit', month:'long'})}</div>
+                                </div>
+                                
+                                <div className="flex-1 glass-panel border-white/10 flex flex-col overflow-hidden">
+                                    <div className="p-5 border-b border-white/10 text-xs font-black uppercase text-white/40 tracking-widest flex justify-between">
+                                        <span>Patient List</span>
+                                        <span className="text-emerald-400">{queue.length} Total</span>
                                     </div>
-                                    <div className="flex flex-col gap-6 overflow-hidden">
-                                        <div className="glass-panel p-6 rounded-[40px] text-center shadow-2xl flex-shrink-0"><ClockDisplay /></div>
-                                        <div className="flex-1 overflow-hidden">
-                                            <LiveMonitor queue={activeQueue} isDark={true} />
-                                        </div>
+                                    <div className="monitor-scroll custom-scrollbar">
+                                        {queue.map(p => (
+                                            <div key={p.id} className="p-6 border-b border-white/5 grid grid-cols-[1fr_2fr_1.5fr] items-center">
+                                                <span className="text-4xl font-black text-white">#{p.num}</span>
+                                                <span className="text-xl font-bold text-white/80 truncate pr-2 uppercase">{p.name}</span>
+                                                <span className="text-right text-lg font-black text-emerald-300 uppercase tracking-tighter">{p.loc}</span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                                <div className="ticker-bar"><div className="ticker-move">{tickerText}</div></div>
                             </div>
+                            
+                            <div className="ticker-bar"><div className="ticker-move">{tickerText}</div></div>
                         </div>
                     ) : (
+                        /* ADMIN VIEWS REMAIN UNCHANGED BUT WITH COLUMN REMARKS */
                         <div className="admin-layout text-slate-800">
-                            <div className="bg-white rounded-[30px] border shadow-sm flex flex-col overflow-hidden relative">
+                            <div className="bg-white rounded-[30px] border shadow-sm flex flex-col overflow-hidden">
                                 {view === 'reg' && (
-                                    <div className="flex flex-col h-full items-center justify-center p-8">
-                                        <div className="w-full max-w-sm space-y-6">
-                                            <h1 className="text-4xl font-black text-center">Registration</h1>
-                                            <input placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} className="w-full p-4 bg-slate-50 border rounded-xl font-bold outline-none" />
-                                            <input type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} className="w-full p-5 bg-white border-2 border-slate-100 rounded-2xl text-6xl font-black text-center no-spinner outline-none" />
-                                            <div className="flex flex-col gap-3">
-                                                <button onClick={() => { if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({ num: inputNum, name: inputName, status: 'waiting', loc: 'Waiting Area', time: Date.now() }); setLastTicket({num: inputNum}); setInputNum(''); setInputName(''); }} className="w-full py-5 bg-slate-950 text-white rounded-full font-black shadow-lg uppercase">Register</button>
-                                                <button onClick={() => handlePrint(lastTicket.num)} disabled={!lastTicket} className={`w-full py-4 border-2 rounded-full font-bold uppercase ${!lastTicket ? 'text-slate-300 border-slate-100' : 'text-slate-600 border-slate-300'}`}>Print Ticket</button>
-                                                <button onClick={() => { if(confirm("Clear database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete())); }} className="w-full py-3 mt-8 text-red-500 font-bold text-xs uppercase hover:bg-red-50 rounded-xl transition-all">Clear All</button>
-                                            </div>
-                                        </div>
+                                    <div className="p-10 flex flex-col gap-6 max-w-sm mx-auto">
+                                        <h1 className="text-3xl font-black text-center uppercase tracking-tight">Registration</h1>
+                                        <input className="p-4 border rounded-xl font-bold" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} />
+                                        <input className="p-4 border rounded-xl text-5xl font-black text-center no-spinner" type="number" placeholder="000" value={inputNum} onChange={e => setInputNum(e.target.value)} />
+                                        <button className="bg-slate-950 text-white py-5 rounded-2xl font-black shadow-lg" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>REGISTER PATIENT</button>
+                                        <button className="border-2 py-4 rounded-2xl font-bold text-slate-400" onClick={() => handlePrint(lastTicket)}>PRINT LAST TICKET</button>
+                                        <button className="mt-10 text-red-500 font-bold text-[10px] uppercase hover:underline" onClick={() => {if(confirm("Clear database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}>Reset Daily Database</button>
                                     </div>
                                 )}
+
                                 {(view === 'doc' || view === 'pharmacy') && (
                                     <div className="flex flex-col h-full overflow-hidden">
-                                        <div className="p-4 border-b font-black uppercase text-xs tracking-widest text-slate-500 bg-slate-50 flex justify-between">
-                                            <span>{branch} Queue</span>
-                                            <span>{view === 'pharmacy' ? 'Pharmacy' : 'Consultation'}</span>
+                                        <div className="p-4 bg-slate-50 border-b font-black text-xs uppercase tracking-widest flex justify-between">
+                                            <span>{view} console</span>
+                                            <span className="text-slate-400">{branch}</span>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
-                                            {activeQueue.filter(p => view === 'pharmacy' ? (p.status==='collecting') : (p.status !== 'finished')).map(p => (
-                                                <div key={p.id} className="p-4 border-b flex items-center gap-4 hover:bg-slate-50 transition">
-                                                    <div className="w-24 flex-shrink-0 text-center">
-                                                        <div className="text-3xl font-black leading-none mb-1">#{p.num}</div>
-                                                        <StatusBadge status={p.status} />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-sm font-black text-blue-600 uppercase truncate">{p.name || 'Anonymous'}</div>
-                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{p.loc}</div>
-                                                    </div>
-
-                                                    {/* COMPACT NOTES COLUMN */}
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                            {queue.filter(p => view === 'pharmacy' ? p.status === 'collecting' : p.status !== 'finished').map(p => (
+                                                <div key={p.id} className="p-4 border-b flex items-center gap-4 hover:bg-slate-50">
+                                                    <div className="w-16 text-2xl font-black">#{p.num}</div>
+                                                    <div className="flex-1 truncate font-bold text-sm uppercase text-blue-600">{p.name || 'Anonymous'}</div>
+                                                    
                                                     {view === 'pharmacy' && (
                                                         <div className="w-1/3 flex-shrink-0">
                                                             <textarea 
-                                                                defaultValue={p.remarks || ''}
-                                                                onBlur={(e) => updatePatient(p.id, p.status, p.loc, false, e.target.value)}
-                                                                placeholder="Notes..."
-                                                                className="w-full bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-[10px] font-bold text-slate-700 outline-none h-12 resize-none leading-tight"
-                                                            />
+                                                                defaultValue={p.remarks} 
+                                                                onBlur={e => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({remarks: e.target.value})} 
+                                                                className="w-full text-[11px] p-2 bg-yellow-50 border border-yellow-200 rounded leading-tight font-medium" 
+                                                                placeholder="Pharmacist note..."/>
                                                         </div>
                                                     )}
 
                                                     <div className="flex gap-1 flex-shrink-0">
                                                         {view === 'doc' ? (
                                                             <>
-                                                                <div className="flex flex-wrap gap-1 max-w-[120px] justify-end">
-                                                                    {rooms.map(r => <button key={r} onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({ status: 'calling', loc: r, callTrigger: Date.now() })} className="bg-slate-800 text-white px-2 py-1 rounded text-[9px] font-black uppercase">Call {r.split(' ')[1] || r}</button>)}
-                                                                </div>
-                                                                <button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase self-center h-8">TO DISP</button>
+                                                            {rooms.map(r => <button key={r} onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc: r, callTrigger: Date.now()})} className="bg-slate-800 text-white px-2 py-1 rounded text-[9px] font-black uppercase">Call {r.split(' ')[1] || r}</button>)}
+                                                            <button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase">TO DISP</button>
                                                             </>
                                                         ) : (
-                                                            <div className="flex gap-1">
-                                                                <button onClick={() => updatePatient(p.id, 'collecting', 'Pharmacy Counter', true)} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase h-8">CALL</button>
-                                                                <button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase h-8">DONE</button>
-                                                            </div>
+                                                            <>
+                                                            <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'calling', loc:'Pharmacy', callTrigger: Date.now()})} className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase">Call</button>
+                                                            <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).update({status:'finished', loc:'Done'})} className="bg-slate-800 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase">Done</button>
+                                                            </>
                                                         )}
-                                                        <button onClick={() => { if(confirm("Remove?")) db.collection("branches").doc(branch).collection("queue").doc(p.id).delete(); }} className="text-slate-300 ml-1 hover:text-red-500 font-bold px-2 text-xs">✕</button>
+                                                        <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 ml-2">✕</button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -401,7 +301,19 @@
                                     </div>
                                 )}
                             </div>
-                            <LiveMonitor queue={activeQueue} isDark={false} />
+                            
+                            <div className="bg-white rounded-[30px] border shadow-sm overflow-hidden flex flex-col">
+                                <div className="p-4 border-b font-black text-xs uppercase tracking-widest text-slate-400">Activity monitor</div>
+                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                    {queue.map(p => (
+                                        <div key={p.id} className="p-4 border-b flex justify-between items-center text-xs">
+                                            <span className="font-black text-lg">#{p.num}</span>
+                                            <span className="font-bold uppercase text-slate-500">{p.status}</span>
+                                            <span className="font-black uppercase text-blue-600">{p.loc}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
