@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AraQue Pro - v14.4</title>
+    <title>AraQue Pro - v14.5</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
@@ -114,7 +114,7 @@
             const [queue, setQueue] = React.useState([]);
             const [selectedIds, setSelectedIds] = React.useState([]);
             
-            // Settings
+            // Settings State
             const [t1Text, setT1Text] = React.useState('Selamat datang ke KLINIK ARA 24 JAM.');
             const [t1Bg, setT1Bg] = React.useState('#2563eb'); const [t1Color, setT1Color] = React.useState('#ffffff');
             const [t2Text, setT2Text] = React.useState('Sila pastikan nombor giliran anda adalah betul.');
@@ -132,16 +132,34 @@
             
             const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
+            // LISTENERS & BRANCH LOGIC
             React.useEffect(() => {
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
+                
+                // Queue Listener
                 const unsubQ = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                
+                // Config Listener (Branch Specific)
                 const unsubC = db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
-                        if (d.rooms) setRooms(d.rooms); if (d.ticketHeader) setTicketHeader(d.ticketHeader); if (d.ticketFooter) setTicketFooter(d.ticketFooter);
-                        if (d.t1Text) setT1Text(d.t1Text); if (d.t1Bg) setT1Bg(d.t1Bg); if (d.t1Color) setT1Color(d.t1Color);
-                        if (d.t2Text) setT2Text(d.t2Text); if (d.t2Bg) setT2Bg(d.t2Bg); if (d.t2Color) setT2Color(d.t2Color);
+                        setRooms(d.rooms || ['Room 1', 'Room 2', 'Room 3']); 
+                        setTicketHeader(d.ticketHeader || 'KLINIK ARA 24 JAM'); 
+                        setTicketFooter(d.ticketFooter || 'Moga segala urusan dimudahkan.');
+                        setT1Text(d.t1Text || 'Selamat datang ke KLINIK ARA 24 JAM.'); 
+                        setT1Bg(d.t1Bg || '#2563eb'); setT1Color(d.t1Color || '#ffffff');
+                        setT2Text(d.t2Text || 'Sila pastikan nombor giliran anda adalah betul.'); 
+                        setT2Bg(d.t2Bg || '#dc2626'); setT2Color(d.t2Color || '#ffffff');
+                    } else {
+                        // RESET TO DEFAULTS IF BRANCH CONFIG DOESN'T EXIST
+                        setRooms(['Room 1', 'Room 2', 'Room 3']);
+                        setTicketHeader('KLINIK ARA 24 JAM');
+                        setTicketFooter('Moga segala urusan dimudahkan.');
+                        setT1Text('Selamat datang ke KLINIK ARA 24 JAM.');
+                        setT1Bg('#2563eb'); setT1Color('#ffffff');
+                        setT2Text('Sila pastikan nombor giliran anda adalah betul.');
+                        setT2Bg('#dc2626'); setT2Color('#ffffff');
                     }
                 });
                 return () => { unsubQ(); unsubC(); };
@@ -214,7 +232,7 @@
                                     <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold">Done</button>
                                 </div>
                                 <div className="text-center mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-                                    AraQue Pro v14.4 • Dev: Dr Asyraf
+                                    AraQue Pro v14.5 • Dev: Dr Asyraf
                                 </div>
                             </div>
                         </div>
