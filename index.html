@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AraQue Pro - v14.3</title>
+    <title>AraQue Pro - v14.4</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
@@ -214,7 +214,7 @@
                                     <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold">Done</button>
                                 </div>
                                 <div className="text-center mt-4 text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-                                    AraQue Pro v14.3 • Dev: Dr Asyraf
+                                    AraQue Pro v14.4 • Dev: Dr Asyraf
                                 </div>
                             </div>
                         </div>
@@ -238,9 +238,23 @@
                     )}
 
                     {/* --- HEADER --- */}
-                    <nav className={`global-nav ${view === 'tv' ? 'hidden' : ''}`}>
-                        <div className="flex items-center gap-6"><span className="text-xl font-bold tracking-tight text-blue-600">AraQue Pro</span><select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
-                        <div className="flex gap-1">{['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}<button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl">⚙️</button></div>
+                    <nav className="global-nav">
+                        <div className="flex items-center gap-6">
+                            <span 
+                                onClick={() => view === 'tv' && setView('reg')} 
+                                className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}
+                            >
+                                AraQue Pro
+                            </span>
+                            <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">
+                                {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                        </div>
+                        {/* HIDE TABS IN TV MODE */}
+                        <div className={`flex gap-1 ${view === 'tv' ? 'hidden' : ''}`}>
+                            {['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}
+                            <button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl">⚙️</button>
+                        </div>
                     </nav>
 
                     {/* --- CONTENT --- */}
@@ -272,7 +286,6 @@
                                     <div className="ticker-layer-2" style={{backgroundColor: t2Bg, color: t2Color}}><div className="ticker-move-fast">{t2Text}</div></div>
                                     <div className="ticker-layer-1" style={{backgroundColor: t1Bg, color: t1Color}}><div className="ticker-move-slow">{t1Text}</div></div>
                                 </div>
-                                <button onClick={()=>setView('reg')} className="absolute top-2 right-2 text-[10px] text-white/10 hover:text-white">EXIT</button>
                             </div>
                         ) : view === 'reg' ? (
                             <div className="reg-layout">
