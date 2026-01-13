@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AraQue Pro - v15.1</title>
+    <title>AraQue Pro - v15.6</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -19,24 +19,28 @@
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; margin: 0; overflow: hidden; height: 100vh; width: 100vw; }
 
         /* --- UI COMPONENTS (iOS Style) --- */
-        .ios-toggle { 
-            width: 50px; height: 30px; border-radius: 99px; padding: 2px; cursor: pointer; transition: background 0.3s; 
-            position: relative; 
-        }
+        .ios-toggle { width: 50px; height: 30px; border-radius: 99px; padding: 2px; cursor: pointer; transition: background 0.3s; position: relative; }
         .ios-toggle.on { background: #34c759; } 
         .ios-toggle.off { background: #e9e9ea; } 
-        .ios-knob {
-            width: 26px; height: 26px; background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            position: absolute; top: 2px; transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-        }
+        .ios-knob { width: 26px; height: 26px; background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); position: absolute; top: 2px; transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); }
         .ios-toggle.on .ios-knob { left: 22px; }
         .ios-toggle.off .ios-knob { left: 2px; }
 
         .ios-group { background: #f9f9f9; border-radius: 16px; padding: 0 16px; margin-bottom: 20px; border: 1px solid #f0f0f0; }
         .ios-item { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid #e5e5e5; }
         .ios-item:last-child { border-bottom: none; }
+        .ios-item-col { display: flex; flex-direction: column; padding: 16px 0; border-bottom: 1px solid #e5e5e5; }
+        .ios-item-col:last-child { border-bottom: none; }
         .ios-label { font-size: 15px; font-weight: 600; color: #1c1c1e; }
         .ios-input { text-align: right; background: transparent; outline: none; color: #3a3a3c; font-size: 15px; width: 60%; }
+        .ios-textarea { width: 100%; margin-top: 10px; background: #e5e5ea; border-radius: 12px; padding: 12px; border: none; outline: none; font-size: 15px; color: #1c1c1e; min-height: 80px; resize: vertical; font-family: inherit; }
+        .ios-range { width: 100%; -webkit-appearance: none; height: 4px; background: #e5e5ea; border-radius: 2px; outline: none; margin-top: 10px; }
+        .ios-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer; border: 0.5px solid rgba(0,0,0,0.04); }
+
+        .room-chip { display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e5e5e5; padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .room-add-row { display: flex; gap: 10px; margin-bottom: 12px; }
+        .room-input { flex: 1; background: #e5e5ea; border-radius: 10px; border: none; padding: 10px; outline: none; font-size: 14px; }
+        .room-btn { background: #007aff; color: white; border-radius: 10px; padding: 0 16px; font-weight: 600; font-size: 13px; cursor: pointer; border: none; }
         
         /* --- LAYOUT UTILITIES --- */
         .app-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; }
@@ -70,8 +74,10 @@
         .ticker-move-fast { white-space: nowrap; animation: marquee 25s linear infinite; display: inline-block; padding-left: 100%; }
         .ticker-move-slow { white-space: nowrap; animation: marquee 45s linear infinite; display: inline-block; padding-left: 100%; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        @keyframes pulse-hero { 0% { background: #f8fafc; } 50% { background: #e2e8f0; } }
-        .hero-active { animation: pulse-hero 0.8s ease-in-out infinite; }
+        
+        /* UPDATED ANIMATION */
+        @keyframes pulse-active { 0% { background-color: #f8fafc; } 50% { background-color: #e2e8f0; } }
+        .hero-active { animation: pulse-active 0.8s ease-in-out infinite; }
         
         .badge-call { background: #fee2e2; color: #dc2626; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
         .badge-wait { background: #f1f5f9; color: #64748b; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
@@ -97,6 +103,8 @@
         .monitor-scroll::-webkit-scrollbar { width: 6px; }
         .monitor-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px !important; }
         .checkbox-custom { width: 20px; height: 20px; accent-color: #0f172a; cursor: pointer; }
+        
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; bottom: 10px; right: 10px; z-index: 999; }
     </style>
 </head>
 <body>
@@ -136,9 +144,19 @@
 
         function App() {
             const [view, setView] = React.useState(localStorage.getItem('active_view') || 'reg');
-            const [branch, setBranch] = React.useState(localStorage.getItem('clinic_branch') || 'Kajang');
+            
+            // --- BRANCH LOCK ---
+            const getInitialBranch = () => {
+                const params = new URLSearchParams(window.location.search);
+                const urlBranch = params.get('branch');
+                if (urlBranch) return urlBranch;
+                return localStorage.getItem('clinic_branch') || 'Kajang';
+            };
+            const [branch, setBranch] = React.useState(getInitialBranch());
+
             const [queue, setQueue] = React.useState([]);
             const [selectedIds, setSelectedIds] = React.useState([]);
+            const [isConnected, setIsConnected] = React.useState(true);
             
             // Settings State
             const [t1Text, setT1Text] = React.useState('Selamat datang ke KLINIK ARA 24 JAM.');
@@ -149,25 +167,33 @@
             const [ticketHeader, setTicketHeader] = React.useState('KLINIK ARA 24 JAM');
             const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
             
-            // AUDIO SETTINGS
+            // Audio & Visuals
             const [chimeEnabled, setChimeEnabled] = React.useState(true);
             const [voiceGender, setVoiceGender] = React.useState('female');
+            const [animEnabled, setAnimEnabled] = React.useState(true);
+            const [animDuration, setAnimDuration] = React.useState(3);
 
+            // UI
             const [inputNum, setInputNum] = React.useState('');
             const [inputName, setInputName] = React.useState('');
             const [lastTicket, setLastTicket] = React.useState(null);
             const [remarksTarget, setRemarksTarget] = React.useState(null);
             const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
             const [audioOn, setAudioOn] = React.useState(false);
+            const [newRoom, setNewRoom] = React.useState('');
+            const [isBlinking, setIsBlinking] = React.useState(false);
             
             const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
-            // INITIALIZATION
+            // LISTENERS
             React.useEffect(() => {
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
                 
-                const unsubQ = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubQ = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => {
+                    setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    setIsConnected(true);
+                }, (err) => setIsConnected(false));
                 
                 const unsubC = db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
                     if (doc.exists) {
@@ -179,51 +205,59 @@
                         setT2Text(d.t2Text || 'Sila pastikan nombor giliran anda adalah betul.'); setT2Bg(d.t2Bg || '#dc2626'); setT2Color(d.t2Color || '#ffffff');
                         setChimeEnabled(d.chimeEnabled !== undefined ? d.chimeEnabled : true);
                         setVoiceGender(d.voiceGender || 'female');
+                        setAnimEnabled(d.animEnabled !== undefined ? d.animEnabled : true);
+                        setAnimDuration(d.animDuration || 3);
                     } else {
-                        // Defaults
                         setRooms(['Room 1', 'Room 2', 'Room 3']);
                         setTicketHeader('KLINIK ARA 24 JAM');
                         setTicketFooter('Moga segala urusan dimudahkan.');
                         setChimeEnabled(true); setVoiceGender('female');
+                        setAnimEnabled(true); setAnimDuration(3);
                     }
                 });
                 return () => { unsubQ(); unsubC(); };
             }, [branch]);
 
             const updateSettings = (updates) => db.collection("branches").doc(branch).collection("settings").doc("config").set(updates, {merge:true});
-            const currentCaller = queue.filter(p => p.callTrigger && p.status !== 'finished').sort((a,b) => b.callTrigger - a.callTrigger)[0];
-            const lastCallId = React.useRef(null);
+            
+            // --- STRICT "CALLING" FILTER FOR ANNOUNCEMENTS ---
+            const currentCaller = queue.filter(p => p.callTrigger && p.status === 'calling').sort((a,b) => b.callTrigger - a.callTrigger)[0];
+            const lastCallId = React.useRef(0);
 
-            // STRICT ENGLISH AUDIO LOGIC
+            // AUDIO & VISUAL LOGIC
             React.useEffect(() => {
-                if (view === 'tv' && audioOn && currentCaller && currentCaller.callTrigger !== lastCallId.current) {
-                    lastCallId.current = currentCaller.callTrigger;
+                if (view === 'tv' && currentCaller) {
                     
-                    const playSequence = () => {
-                        if ('speechSynthesis' in window) {
-                            setTimeout(() => {
-                                const msg = new SpeechSynthesisUtterance(`Number ${currentCaller.num}. Proceed to ${currentCaller.loc}.`);
-                                msg.lang = 'en-US'; // STRICTLY ENGLISH
-                                
-                                const voices = window.speechSynthesis.getVoices();
-                                // Filter strictly for English voices first
-                                const englishVoices = voices.filter(v => v.lang.startsWith('en'));
-                                // Then try to match gender within English voices
-                                const preferredVoice = englishVoices.find(v => v.name.toLowerCase().includes(voiceGender === 'male' ? 'male' : 'female')) || englishVoices[0] || voices[0];
-                                
-                                if(preferredVoice) msg.voice = preferredVoice;
-                                window.speechSynthesis.speak(msg);
-                            }, 500);
+                    // ONLY TRIGGER IF THIS IS A NEWER CALL THAN PLAYED BEFORE
+                    if (currentCaller.callTrigger > lastCallId.current) {
+                        lastCallId.current = currentCaller.callTrigger;
+                        
+                        // VISUAL: Blink
+                        if (animEnabled) {
+                            setIsBlinking(true);
+                            setTimeout(() => setIsBlinking(false), animDuration * 1000);
                         }
-                    };
 
-                    if (chimeEnabled) {
-                        chimeRef.current.play().then(playSequence).catch(e=>{});
-                    } else {
-                        playSequence();
+                        // AUDIO
+                        if (audioOn) {
+                            const playSequence = () => {
+                                if ('speechSynthesis' in window) {
+                                    setTimeout(() => {
+                                        const msg = new SpeechSynthesisUtterance(`Number ${currentCaller.num}. Proceed to ${currentCaller.loc}.`);
+                                        msg.lang = 'en-US'; 
+                                        const voices = window.speechSynthesis.getVoices();
+                                        const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+                                        const preferredVoice = englishVoices.find(v => v.name.toLowerCase().includes(voiceGender === 'male' ? 'male' : 'female')) || englishVoices[0] || voices[0];
+                                        if(preferredVoice) msg.voice = preferredVoice;
+                                        window.speechSynthesis.speak(msg);
+                                    }, 500);
+                                }
+                            };
+                            if (chimeEnabled) { chimeRef.current.play().then(playSequence).catch(e=>{}); } else { playSequence(); }
+                        }
                     }
                 }
-            }, [currentCaller, view, audioOn, chimeEnabled, voiceGender]);
+            }, [currentCaller, view, audioOn, chimeEnabled, voiceGender, animEnabled, animDuration]);
 
             const handlePrint = (num) => {
                 const now = new Date().toLocaleString('en-GB'); 
@@ -251,13 +285,17 @@
                 return <span className="badge-wait">WAITING</span>;
             };
 
+            const handleAddRoom = () => { if(newRoom.trim()==="") return; const u = [...rooms, newRoom.trim()]; setRooms(u); updateSettings({rooms: u}); setNewRoom(''); };
+            const handleDeleteRoom = (idx) => { const u = rooms.filter((_, i) => i !== idx); setRooms(u); updateSettings({rooms: u}); };
+
             const pendingDr = queue.filter(p => p.status === 'waiting').length;
             const pendingPharm = queue.filter(p => p.status === 'collecting').length;
             const totalPatients = queue.length;
 
             return (
                 <div className="app-container">
-                    
+                    <div className={`status-dot ${isConnected ? 'bg-transparent' : 'bg-red-500 animate-pulse'}`} title="Connection Status"></div>
+
                     {/* --- iOS SETTINGS MODAL --- */}
                     {isSettingsOpen && (
                         <div className="fixed inset-0 bg-black/40 z-[200] flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity">
@@ -266,71 +304,66 @@
                                     <h2 className="text-xl font-bold text-slate-800">Settings</h2>
                                     <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-sm font-bold">Done</button>
                                 </div>
-                                
                                 <div className="p-6 overflow-y-auto bg-slate-100 space-y-6">
                                     
-                                    {/* GROUP: GENERAL */}
+                                    {/* GENERAL */}
                                     <div>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3>
                                         <div className="ios-group">
-                                            <div className="ios-item">
-                                                <span className="ios-label">Clinic Header</span>
-                                                <input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} />
-                                            </div>
-                                            <div className="ios-item">
-                                                <span className="ios-label">Ticket Footer</span>
-                                                <input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} />
-                                            </div>
-                                            <div className="ios-item">
-                                                <span className="ios-label">Rooms (comma sep)</span>
-                                                <input className="ios-input" value={rooms.join(', ')} onChange={e => {const r = e.target.value.split(', '); setRooms(r); updateSettings({rooms: r})}} />
-                                            </div>
+                                            <div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div>
+                                            <div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div>
                                         </div>
                                     </div>
 
-                                    {/* GROUP: AUDIO */}
+                                    {/* VISUALS */}
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3>
+                                        <div className="ios-group">
+                                            <div className="ios-item">
+                                                <span className="ios-label">Blink Animation</span>
+                                                <IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} />
+                                            </div>
+                                            {animEnabled && (
+                                                <div className="ios-item-col">
+                                                    <div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div>
+                                                    <input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* AUDIO */}
                                     <div>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3>
                                         <div className="ios-group">
-                                            <div className="ios-item">
-                                                <span className="ios-label">Enable Chime</span>
-                                                <IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} />
-                                            </div>
-                                            <div className="ios-item">
-                                                <span className="ios-label">Voice Gender</span>
-                                                <select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}>
-                                                    <option value="female">Female (English)</option>
-                                                    <option value="male">Male (English)</option>
-                                                </select>
-                                            </div>
+                                            <div className="ios-item"><span className="ios-label">Enable Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div>
+                                            <div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div>
                                         </div>
                                     </div>
 
-                                    {/* GROUP: DISPLAY */}
+                                    {/* ROOMS */}
                                     <div>
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Display</h3>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3>
                                         <div className="ios-group">
-                                            <div className="ios-item">
-                                                <span className="ios-label text-blue-600">Bottom Ticker</span>
-                                                <input className="ios-input" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} />
-                                            </div>
-                                            <div className="ios-item">
-                                                <span className="ios-label text-red-600">Top Ticker</span>
-                                                <input className="ios-input" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} />
+                                            <div className="ios-item-col">
+                                                <div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div>
+                                                <div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* DANGER ZONE */}
-                                    <div className="ios-group">
-                                        <div className="ios-item" onClick={() => {if(confirm("DANGER: Wipe database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}>
-                                            <span className="ios-label text-red-500 w-full text-center cursor-pointer">Factory Reset Database</span>
+                                    {/* TV DISPLAY */}
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3>
+                                        <div className="ios-group">
+                                            <div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div>
+                                            <div className="ios-item-col"><span className="ios-label text-red-600">Top Ticker</span><textarea className="ios-textarea" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div>
                                         </div>
                                     </div>
 
-                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">
-                                        AraQue Pro v15.1 • Dev: Dr Asyraf
-                                    </div>
+                                    {/* DANGER */}
+                                    <div className="ios-group"><div className="ios-item" onClick={() => {if(confirm("DANGER: Wipe database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}><span className="ios-label text-red-500 w-full text-center cursor-pointer">Factory Reset Database</span></div></div>
+                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">AraQue Pro v15.6 • Dev: Dr Asyraf</div>
                                 </div>
                             </div>
                         </div>
@@ -341,45 +374,25 @@
                             <div className="bg-white p-6 w-80 rounded-3xl shadow-2xl">
                                 <h3 className="font-bold mb-2">Note for Pharmacy</h3>
                                 <textarea className="w-full p-2 border rounded-xl h-24" id="pharm_note" placeholder="Write here..."/>
-                                <div className="flex gap-2 mt-4">
-                                    <button className="flex-1 bg-slate-100 py-2 rounded-xl" onClick={() => setRemarksTarget(null)}>Cancel</button>
-                                    <button className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold" onClick={() => {
-                                        const note = document.getElementById('pharm_note').value;
-                                        updatePatient(remarksTarget.id, 'collecting', 'Pharmacy', false, note);
-                                        setRemarksTarget(null);
-                                    }}>Send</button>
-                                </div>
+                                <div className="flex gap-2 mt-4"><button className="flex-1 bg-slate-100 py-2 rounded-xl" onClick={() => setRemarksTarget(null)}>Cancel</button><button className="flex-1 bg-blue-600 text-white py-2 rounded-xl font-bold" onClick={() => { const note = document.getElementById('pharm_note').value; updatePatient(remarksTarget.id, 'collecting', 'Pharmacy', false, note); setRemarksTarget(null); }}>Send</button></div>
                             </div>
                         </div>
                     )}
 
-                    {/* --- HEADER --- */}
+                    {/* NAV */}
                     <nav className="global-nav">
-                        <div className="flex items-center gap-6">
-                            <span 
-                                onClick={() => view === 'tv' && setView('reg')} 
-                                className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}
-                            >
-                                AraQue Pro
-                            </span>
-                            <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">
-                                {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}
-                            </select>
-                        </div>
-                        <div className={`flex gap-1 ${view === 'tv' ? 'hidden' : ''}`}>
-                            {['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}
-                            <button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl hover:bg-slate-100 rounded-full transition">⚙️</button>
-                        </div>
+                        <div className="flex items-center gap-6"><span onClick={() => view === 'tv' && setView('reg')} className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}>AraQue Pro</span><select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                        <div className={`flex gap-1 ${view === 'tv' ? 'hidden' : ''}`}>{['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}<button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl hover:bg-slate-100 rounded-full transition">⚙️</button></div>
                     </nav>
 
-                    {/* --- CONTENT --- */}
+                    {/* MAIN CONTENT */}
                     <div className="content-area">
                         {view === 'tv' ? (
                             <div className="tv-screen">
                                 <div className="tv-layout">
                                     <div className="col-left"><div className="bento-tile time-tile"><LiveClock /></div><div className="bento-tile date-tile"><LiveDate /></div></div>
                                     <div className="col-middle">
-                                        <div className={`bento-tile hero-tile ${currentCaller ? 'hero-active' : ''}`}>
+                                        <div className={`bento-tile hero-tile ${isBlinking ? 'hero-active' : ''}`}>
                                             {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl animate-pulse">Start Audio</button></div>}
                                             <div className="hero-label">Now Calling</div><div className="huge-number">{currentCaller?.num || '---'}</div><div className="huge-location">{currentCaller?.loc || 'STANDBY'}</div>
                                         </div>
@@ -387,13 +400,7 @@
                                     <div className="col-right">
                                         <div className="bento-tile monitor-tile">
                                             <div className="monitor-header"><span>No.</span><span>Location</span><span>Status</span></div>
-                                            <div className="monitor-scroll">
-                                                {queue.slice(0,30).map(p => (
-                                                    <div key={p.id} className="monitor-item">
-                                                        <span className="text-4xl font-black text-slate-800">#{p.num}</span><span className="text-xl font-bold text-blue-600 uppercase truncate w-full">{p.loc.replace('Waiting Area', 'Wait')}</span>{getStatusBadge(p.status)}
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            <div className="monitor-scroll">{queue.slice(0,30).map(p => (<div key={p.id} className="monitor-item"><span className="text-4xl font-black text-slate-800">#{p.num}</span><span className="text-xl font-bold text-blue-600 uppercase truncate w-full">{p.loc.replace('Waiting Area', 'Wait')}</span>{getStatusBadge(p.status)}</div>))}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -406,7 +413,7 @@
                             <div className="reg-layout">
                                 <div className="bento-tile bg-blue-600 p-8 shadow-2xl flex flex-col justify-center gap-6">
                                     <h1 className="text-2xl font-black text-white uppercase tracking-tighter text-center">New Registration</h1>
-                                    <input className="reg-uniform-box reg-input-style" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value)} />
+                                    <input className="reg-uniform-box reg-input-style" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value.toUpperCase())} />
                                     <input className="reg-uniform-box reg-input-style" type="number" placeholder="Queue Number" value={inputNum} onChange={e => setInputNum(e.target.value)} />
                                     <button className="reg-uniform-box reg-btn-primary" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting Area', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>Register</button>
                                     <button className="reg-uniform-box reg-btn-secondary" onClick={() => handlePrint(lastTicket)}>Reprint Ticket</button>
@@ -418,14 +425,7 @@
                                 </div>
                                 <div className="admin-panel admin-panel-col shadow-sm">
                                     <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Queue Monitor</div>
-                                    <div className="flex-1 overflow-y-auto p-2 monitor-scroll">
-                                        {queue.slice(0,15).map(p => (
-                                            <div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50">
-                                                <div className="flex flex-col"><span className="font-bold text-lg">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div>
-                                                <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-2 monitor-scroll">{queue.slice(0,15).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold text-lg">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}</div>
                                 </div>
                             </div>
                         ) : (
@@ -443,30 +443,11 @@
                                             <div key={p.id} className={`p-4 border-b flex items-center gap-4 transition-all ${p.status === 'finished' ? 'bg-slate-100 opacity-60' : 'hover:bg-slate-50'}`}>
                                                 <input type="checkbox" className="checkbox-custom" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} />
                                                 <div className="w-12 text-xl font-black">#{p.num}</div>
-                                                <div className="w-32 flex flex-col">
-                                                    <span className="font-bold text-sm uppercase text-slate-700 truncate">{p.name || '---'}</span>
-                                                </div>
-                                                {view === 'doc' && (
-                                                    <div className="flex-1 flex gap-2">
-                                                        <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border uppercase truncate w-20">{p.loc}</span>
-                                                        <span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase w-20 text-center ${p.status==='calling'?'bg-red-100 text-red-600': p.status==='finished'?'bg-slate-200 text-slate-500':'bg-white text-slate-400'}`}>{p.status}</span>
-                                                    </div>
-                                                )}
-                                                {view === 'pharmacy' && (
-                                                    <div className="flex-1"><textarea defaultValue={p.remarks} onBlur={e => updatePatient(p.id, p.status, p.loc, false, e.target.value)} className="w-full text-xs p-2 bg-yellow-50 border rounded h-10 resize-none" placeholder="Note..."/></div>
-                                                )}
+                                                <div className="w-32 flex flex-col"><span className="font-bold text-sm uppercase text-slate-700 truncate">{p.name || '---'}</span></div>
+                                                {view === 'doc' && (<div className="flex-1 flex gap-2"><span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border uppercase truncate w-20">{p.loc}</span><span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase w-20 text-center ${p.status==='calling'?'bg-red-100 text-red-600': p.status==='finished'?'bg-slate-200 text-slate-500':'bg-white text-slate-400'}`}>{p.status}</span></div>)}
+                                                {view === 'pharmacy' && (<div className="flex-1"><textarea defaultValue={p.remarks} onBlur={e => updatePatient(p.id, p.status, p.loc, false, e.target.value)} className="w-full text-xs p-2 bg-yellow-50 border rounded h-10 resize-none" placeholder="Note..."/></div>)}
                                                 <div className="flex gap-1 flex-shrink-0">
-                                                    {view === 'doc' ? (
-                                                        <>
-                                                            {rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}
-                                                            <button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button>
-                                                            <button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button>
-                                                        </>
-                                                    )}
+                                                    {view === 'doc' ? (<>{rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}<button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button></>) : (<><button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button><button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button></>)}
                                                     <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 px-2 font-bold hover:text-red-500">✕</button>
                                                 </div>
                                             </div>
@@ -476,12 +457,7 @@
                                 <div className="admin-panel admin-panel-col">
                                     <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Activity (Internal)</div>
                                     <div className="flex-1 overflow-y-auto p-2 monitor-scroll">
-                                        {queue.slice(0,15).map(p => (
-                                            <div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50">
-                                                <div className="flex flex-col"><span className="font-bold">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div>
-                                                <span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span>
-                                            </div>
-                                        ))}
+                                        {queue.slice(0,15).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}
                                     </div>
                                 </div>
                             </div>
