@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AraQue Pro - v15.6</title>
+    <title>AraQue Pro - v27.0 (Auto-Delete Chat)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -12,13 +12,14 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 
     <style>
         /* CORE */
         * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; margin: 0; overflow: hidden; height: 100vh; width: 100vw; }
 
-        /* --- UI COMPONENTS (iOS Style) --- */
+        /* --- UI COMPONENTS --- */
         .ios-toggle { width: 50px; height: 30px; border-radius: 99px; padding: 2px; cursor: pointer; transition: background 0.3s; position: relative; }
         .ios-toggle.on { background: #34c759; } 
         .ios-toggle.off { background: #e9e9ea; } 
@@ -75,10 +76,12 @@
         .ticker-move-slow { white-space: nowrap; animation: marquee 45s linear infinite; display: inline-block; padding-left: 100%; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         
-        /* UPDATED ANIMATION */
         @keyframes pulse-active { 0% { background-color: #f8fafc; } 50% { background-color: #e2e8f0; } }
         .hero-active { animation: pulse-active 0.8s ease-in-out infinite; }
         
+        @keyframes flash-red { 0% { background-color: #fee2e2; } 50% { background-color: #ef4444; color:white; } 100% { background-color: #fee2e2; } }
+        .alert-flash { animation: flash-red 0.5s ease-in-out 6; }
+
         .badge-call { background: #fee2e2; color: #dc2626; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
         .badge-wait { background: #f1f5f9; color: #64748b; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
         .badge-pharm { background: #fef9c3; color: #ca8a04; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
@@ -91,20 +94,50 @@
         .reg-input-style::placeholder { color: #94a3b8; text-transform: uppercase; font-size: 0.9rem; }
         .reg-btn-primary { background-color: #0f172a; color: white; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; }
         .reg-btn-secondary { background-color: rgba(255,255,255,0.2); color: white; text-transform: uppercase; font-size: 0.8rem; cursor: pointer; }
-        .stat-container { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 24px; height: 100%; width: 100%; }
-        .stat-square { width: 180px; height: 180px; border-radius: 2.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 15px 30px rgba(0,0,0,0.1); color: white; transition: transform 0.2s; flex-shrink: 0; }
-        .stat-square:hover { transform: translateY(-5px); }
+        
+        .stat-container { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+        .stat-square { flex: 1; height: 120px; border-radius: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.05); color: white; transition: transform 0.2s; }
+        .stat-square:hover { transform: translateY(-2px); }
 
         /* ADMIN UTILS */
         .admin-layout { display: grid; grid-template-columns: 1fr 400px; height: 100%; gap: 24px; padding: 24px; background: #f1f5f9; }
         .admin-panel { background: white; border-radius: 2rem !important; overflow: hidden; border: 1px solid #cbd5e1; }
-        .admin-panel-col { display: flex; flex-direction: column; height: 100%; }
+        .admin-panel-col { display: flex; flex-direction: column; height: 100%; min-height: 0; }
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .monitor-scroll::-webkit-scrollbar { width: 6px; }
         .monitor-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px !important; }
         .checkbox-custom { width: 20px; height: 20px; accent-color: #0f172a; cursor: pointer; }
         
         .status-dot { width: 8px; height: 8px; border-radius: 50%; position: absolute; bottom: 10px; right: 10px; z-index: 999; }
+        
+        /* ALERT MODAL UTILS */
+        .alert-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .alert-btn { background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 12px; font-weight: 700; text-align: center; font-size: 13px; transition: 0.1s; border: 1px solid #fecaca; }
+        .alert-btn:hover { background: #fecaca; }
+        .alert-btn:active { transform: scale(0.95); }
+
+        /* CHAT UTILS */
+        .chat-container { display: flex; flex-direction: column; height: 100%; background: #f8fafc; overflow: hidden; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; position: relative; word-wrap: break-word; }
+        .chat-me { align-self: flex-end; color: white; border-bottom-right-radius: 2px; }
+        
+        /* CHAT COLORS */
+        .chat-me-blue { background: #2563eb; } /* Room 1 */
+        .chat-me-purple { background: #7c3aed; } /* Room 2 */
+        .chat-me-green { background: #10b981; } /* Dispensary */
+        .chat-me-slate { background: #475569; } /* Registration */
+        
+        .chat-other { align-self: flex-start; background: #e2e8f0; color: #1e293b; border-bottom-left-radius: 2px; }
+        .chat-time { font-size: 9px; opacity: 0.7; margin-top: 4px; display: block; text-align: right; }
+        .chat-input-area { padding: 10px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; flex-shrink: 0; }
+        .chat-input { flex: 1; background: #f1f5f9; border: none; padding: 8px 12px; border-radius: 20px; font-size: 13px; outline: none; }
+        
+        /* Updated Chat Header */
+        .chat-header { padding: 12px; border-bottom: 1px solid #f1f5f9; background: white; display: flex; flex-direction: column; justify-content: center; gap: 4px; flex-shrink: 0; }
+        .chat-header-row { display: flex; justify-content: space-between; align-items: center; width: 100%; font-weight: 700; font-size: 12px; text-transform: uppercase; color: #94a3b8; }
+        .chat-role-display { font-weight: 800; color: #1e293b; }
+        .chat-room-select { background: #f1f5f9; border: none; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; outline: none; color: #2563eb; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -158,6 +191,27 @@
             const [selectedIds, setSelectedIds] = React.useState([]);
             const [isConnected, setIsConnected] = React.useState(true);
             
+            // Chat State
+            const [chatMessages, setChatMessages] = React.useState([]);
+            const [chatInput, setChatInput] = React.useState('');
+            const chatEndRef = React.useRef(null);
+
+            // --- SMART ROLE STATE ---
+            const [docRoomPref, setDocRoomPref] = React.useState(localStorage.getItem('doc_room_pref') || 'Room 1');
+
+            const getCurrentIdentity = () => {
+                if (view === 'reg') return 'Registration';
+                if (view === 'pharmacy') return 'Dispensary';
+                if (view === 'doc') return docRoomPref;
+                return 'Unknown';
+            };
+
+            const handleDocRoomChange = (e) => {
+                const newRoom = e.target.value;
+                setDocRoomPref(newRoom);
+                localStorage.setItem('doc_room_pref', newRoom); 
+            };
+
             // Settings State
             const [t1Text, setT1Text] = React.useState('Selamat datang ke KLINIK ARA 24 JAM.');
             const [t1Bg, setT1Bg] = React.useState('#2563eb'); const [t1Color, setT1Color] = React.useState('#ffffff');
@@ -166,12 +220,24 @@
             const [rooms, setRooms] = React.useState(['Room 1', 'Room 2', 'Room 3']);
             const [ticketHeader, setTicketHeader] = React.useState('KLINIK ARA 24 JAM');
             const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
+            const [clinicNote, setClinicNote] = React.useState('');
             
             // Audio & Visuals
-            const [chimeEnabled, setChimeEnabled] = React.useState(true);
+            const [chimeEnabled, setChimeEnabled] = React.useState(true); 
+            const [pharmAlertSoundEnabled, setPharmAlertSoundEnabled] = React.useState(false); 
             const [voiceGender, setVoiceGender] = React.useState('female');
             const [animEnabled, setAnimEnabled] = React.useState(true);
             const [animDuration, setAnimDuration] = React.useState(3);
+
+            // Alerting State
+            const [pharmacyAlertData, setPharmacyAlertData] = React.useState({ msg: '', loc: '' });
+            const [showPharmAlert, setShowPharmAlert] = React.useState(false);
+            const lastAlertRef = React.useRef(Date.now());
+
+            // Doctor Alert Modal State
+            const [isDocAlertOpen, setIsDocAlertOpen] = React.useState(false);
+            const [docCustomMsg, setDocCustomMsg] = React.useState('');
+            const [alertPatientNum, setAlertPatientNum] = React.useState('');
 
             // UI
             const [inputNum, setInputNum] = React.useState('');
@@ -184,17 +250,29 @@
             const [isBlinking, setIsBlinking] = React.useState(false);
             
             const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
+            const alertRef = React.useRef(new Audio('https://www.soundjay.com/buttons/beep-01a.mp3')); 
 
             // LISTENERS
             React.useEffect(() => {
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
                 
+                // 1. QUEUE Listener
                 const unsubQ = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => {
                     setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     setIsConnected(true);
                 }, (err) => setIsConnected(false));
                 
+                // 2. CHAT Listener
+                const unsubChat = db.collection("branches").doc(branch).collection("chat")
+                    .orderBy("time", "asc")
+                    .limitToLast(50)
+                    .onSnapshot(snap => {
+                        setChatMessages(snap.docs.map(d => d.data()));
+                        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                    });
+
+                // 3. SETTINGS Listener
                 const unsubC = db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -203,42 +281,76 @@
                         setTicketFooter(d.ticketFooter || 'Moga segala urusan dimudahkan.');
                         setT1Text(d.t1Text || 'Selamat datang ke KLINIK ARA 24 JAM.'); setT1Bg(d.t1Bg || '#2563eb'); setT1Color(d.t1Color || '#ffffff');
                         setT2Text(d.t2Text || 'Sila pastikan nombor giliran anda adalah betul.'); setT2Bg(d.t2Bg || '#dc2626'); setT2Color(d.t2Color || '#ffffff');
+                        setClinicNote(d.clinicNote || '');
+                        
                         setChimeEnabled(d.chimeEnabled !== undefined ? d.chimeEnabled : true);
+                        setPharmAlertSoundEnabled(d.pharmAlertSoundEnabled !== undefined ? d.pharmAlertSoundEnabled : false);
                         setVoiceGender(d.voiceGender || 'female');
                         setAnimEnabled(d.animEnabled !== undefined ? d.animEnabled : true);
                         setAnimDuration(d.animDuration || 3);
+                        
+                        const serverTrigger = d.alertData?.trigger || 0;
+                        if (serverTrigger > lastAlertRef.current && view === 'pharmacy') {
+                            lastAlertRef.current = serverTrigger;
+                            setPharmacyAlertData(d.alertData);
+                            setShowPharmAlert(true);
+                            if (d.pharmAlertSoundEnabled) {
+                                alertRef.current.currentTime = 0;
+                                alertRef.current.play().catch(e => console.log("Alert sound failed", e));
+                            }
+                            setTimeout(() => setShowPharmAlert(false), 4000);
+                        }
                     } else {
                         setRooms(['Room 1', 'Room 2', 'Room 3']);
-                        setTicketHeader('KLINIK ARA 24 JAM');
-                        setTicketFooter('Moga segala urusan dimudahkan.');
-                        setChimeEnabled(true); setVoiceGender('female');
-                        setAnimEnabled(true); setAnimDuration(3);
+                        setChimeEnabled(true);
+                        setPharmAlertSoundEnabled(false);
                     }
                 });
-                return () => { unsubQ(); unsubC(); };
-            }, [branch]);
+
+                // 4. AUTO-DELETE CLEANUP (Run every 60s)
+                const cleanupInterval = setInterval(() => {
+                    const cutoff = Date.now() - 10 * 60 * 1000; // 10 minutes ago
+                    db.collection("branches").doc(branch).collection("chat")
+                      .where("time", "<", cutoff)
+                      .get()
+                      .then(snap => {
+                          if (!snap.empty) {
+                              const batch = db.batch();
+                              snap.forEach(doc => batch.delete(doc.ref));
+                              batch.commit().catch(e => console.log("Cleanup error", e));
+                          }
+                      });
+                }, 60000);
+
+                return () => { unsubQ(); unsubC(); unsubChat(); clearInterval(cleanupInterval); };
+            }, [branch, view]);
 
             const updateSettings = (updates) => db.collection("branches").doc(branch).collection("settings").doc("config").set(updates, {merge:true});
+            const saveNote = () => updateSettings({ clinicNote: clinicNote });
             
-            // --- STRICT "CALLING" FILTER FOR ANNOUNCEMENTS ---
+            const sendChat = (e) => {
+                e.preventDefault();
+                if (!chatInput.trim()) return;
+                
+                db.collection("branches").doc(branch).collection("chat").add({
+                    text: chatInput,
+                    sender: getCurrentIdentity(), 
+                    time: Date.now()
+                });
+                setChatInput('');
+            };
+
             const currentCaller = queue.filter(p => p.callTrigger && p.status === 'calling').sort((a,b) => b.callTrigger - a.callTrigger)[0];
             const lastCallId = React.useRef(0);
 
-            // AUDIO & VISUAL LOGIC
             React.useEffect(() => {
                 if (view === 'tv' && currentCaller) {
-                    
-                    // ONLY TRIGGER IF THIS IS A NEWER CALL THAN PLAYED BEFORE
                     if (currentCaller.callTrigger > lastCallId.current) {
                         lastCallId.current = currentCaller.callTrigger;
-                        
-                        // VISUAL: Blink
                         if (animEnabled) {
                             setIsBlinking(true);
                             setTimeout(() => setIsBlinking(false), animDuration * 1000);
                         }
-
-                        // AUDIO
                         if (audioOn) {
                             const playSequence = () => {
                                 if ('speechSynthesis' in window) {
@@ -258,6 +370,13 @@
                     }
                 }
             }, [currentCaller, view, audioOn, chimeEnabled, voiceGender, animEnabled, animDuration]);
+
+            const sendAlert = (msg) => {
+                let finalMsg = msg || docCustomMsg || "Need Assistance";
+                if (alertPatientNum) finalMsg = `[Pt #${alertPatientNum}] ${finalMsg}`;
+                updateSettings({ alertData: { trigger: Date.now(), loc: docRoomPref, msg: finalMsg } });
+                setDocCustomMsg(''); setAlertPatientNum(''); setIsDocAlertOpen(false);
+            };
 
             const handlePrint = (num) => {
                 const now = new Date().toLocaleString('en-GB'); 
@@ -296,74 +415,41 @@
                 <div className="app-container">
                     <div className={`status-dot ${isConnected ? 'bg-transparent' : 'bg-red-500 animate-pulse'}`} title="Connection Status"></div>
 
+                    {/* --- DOCTOR ALERT MODAL --- */}
+                    {isDocAlertOpen && (
+                        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 relative">
+                                <button onClick={() => setIsDocAlertOpen(false)} className="absolute top-4 right-4 text-slate-400 font-bold hover:text-black">&times;</button>
+                                <div className="text-center mb-4"><div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 text-red-600 rounded-full mb-2"><i className="ri-notification-3-fill text-xl"></i></div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Alert Pharmacy</h2></div>
+                                
+                                <div className="mb-4">
+                                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Your Location</label>
+                                    <select value={docRoomPref} onChange={handleDocRoomChange} className="w-full bg-slate-100 p-3 rounded-xl font-bold text-slate-700 outline-none border-2 border-transparent focus:border-blue-500">
+                                        {rooms.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="mb-4"><label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Regarding Patient</label><select value={alertPatientNum} onChange={e => setAlertPatientNum(e.target.value)} className="w-full bg-slate-100 p-3 rounded-xl font-bold text-slate-700 outline-none border-2 border-transparent focus:border-blue-500"><option value="">-- General / No Specific Patient --</option>{queue.map(p => (<option key={p.id} value={p.num}>#{p.num} - {p.name}</option>))}</select></div>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Quick Alert</label>
+                                <div className="alert-grid"><button onClick={() => sendAlert("Please Come Here")} className="alert-btn">Please Come Here</button><button onClick={() => sendAlert("Dispense Medication")} className="alert-btn">Dispense Meds</button><button onClick={() => sendAlert("Patient Ready")} className="alert-btn">Patient Ready</button><button onClick={() => sendAlert("Emergency Help")} className="alert-btn bg-red-600 text-white border-red-600 hover:bg-red-700">Emergency</button></div>
+                                <div className="flex gap-2 mt-4"><input value={docCustomMsg} onChange={e => setDocCustomMsg(e.target.value)} placeholder="Or type custom message..." className="flex-1 bg-slate-50 border p-3 rounded-xl text-sm font-semibold outline-none focus:border-blue-500" /><button onClick={() => sendAlert(null)} className="bg-blue-600 text-white px-4 rounded-xl font-bold"><i className="ri-send-plane-fill"></i></button></div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* --- iOS SETTINGS MODAL --- */}
                     {isSettingsOpen && (
                         <div className="fixed inset-0 bg-black/40 z-[200] flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity">
                             <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-                                <div className="p-5 border-b bg-slate-50 flex justify-between items-center">
-                                    <h2 className="text-xl font-bold text-slate-800">Settings</h2>
-                                    <button onClick={() => setIsSettingsOpen(false)} className="bg-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-sm font-bold">Done</button>
-                                </div>
+                                <div className="p-5 border-b bg-slate-50 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">Settings</h2><button onClick={() => setIsSettingsOpen(false)} className="bg-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-sm font-bold">Done</button></div>
                                 <div className="p-6 overflow-y-auto bg-slate-100 space-y-6">
-                                    
-                                    {/* GENERAL */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3>
-                                        <div className="ios-group">
-                                            <div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div>
-                                            <div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div>
-                                        </div>
-                                    </div>
-
-                                    {/* VISUALS */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3>
-                                        <div className="ios-group">
-                                            <div className="ios-item">
-                                                <span className="ios-label">Blink Animation</span>
-                                                <IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} />
-                                            </div>
-                                            {animEnabled && (
-                                                <div className="ios-item-col">
-                                                    <div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div>
-                                                    <input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* AUDIO */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3>
-                                        <div className="ios-group">
-                                            <div className="ios-item"><span className="ios-label">Enable Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div>
-                                            <div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div>
-                                        </div>
-                                    </div>
-
-                                    {/* ROOMS */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3>
-                                        <div className="ios-group">
-                                            <div className="ios-item-col">
-                                                <div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div>
-                                                <div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* TV DISPLAY */}
-                                    <div>
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3>
-                                        <div className="ios-group">
-                                            <div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div>
-                                            <div className="ios-item-col"><span className="ios-label text-red-600">Top Ticker</span><textarea className="ios-textarea" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div>
-                                        </div>
-                                    </div>
-
-                                    {/* DANGER */}
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div><div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}</div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Pharmacy Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3><div className="ios-group"><div className="ios-item-col"><div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div><div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3><div className="ios-group"><div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div><div className="ios-item-col"><span className="ios-label text-red-600">Top Ticker</span><textarea className="ios-textarea" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div></div></div>
                                     <div className="ios-group"><div className="ios-item" onClick={() => {if(confirm("DANGER: Wipe database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}><span className="ios-label text-red-500 w-full text-center cursor-pointer">Factory Reset Database</span></div></div>
-                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">AraQue Pro v15.6 • Dev: Dr Asyraf</div>
+                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">AraQue Pro v27.0 • Dev: Dr Asyraf</div>
                                 </div>
                             </div>
                         </div>
@@ -382,70 +468,78 @@
                     {/* NAV */}
                     <nav className="global-nav">
                         <div className="flex items-center gap-6"><span onClick={() => view === 'tv' && setView('reg')} className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}>AraQue Pro</span><select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
-                        <div className={`flex gap-1 ${view === 'tv' ? 'hidden' : ''}`}>{['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}<button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl hover:bg-slate-100 rounded-full transition">⚙️</button></div>
+                        <div className={`flex gap-1 items-center ${view === 'tv' ? 'hidden' : ''}`}>
+                            {view === 'doc' && (<button onClick={() => setIsDocAlertOpen(true)} className="mr-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition p-2 rounded-full shadow-sm" title="Alert Pharmacy"><i className="ri-notification-3-fill text-xl"></i></button>)}
+                            {['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}
+                            <button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl hover:bg-slate-100 rounded-full transition">⚙️</button>
+                        </div>
                     </nav>
 
                     {/* MAIN CONTENT */}
                     <div className="content-area">
+                        {view === 'pharmacy' && showPharmAlert && (<div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-4 z-50 shadow-xl alert-flash flex flex-col justify-center items-center"><div className="flex items-center gap-2 font-black text-xl"><i className="ri-alarm-warning-fill"></i> ALERT: {pharmacyAlertData.loc.toUpperCase()}</div><div className="font-bold text-sm bg-red-700 px-4 py-1 rounded-full mt-1">{pharmacyAlertData.msg}</div><button onClick={() => setShowPharmAlert(false)} className="mt-2 text-[10px] font-bold opacity-80 border border-white/50 px-2 rounded hover:bg-white/20">DISMISS</button></div>)}
+
                         {view === 'tv' ? (
                             <div className="tv-screen">
                                 <div className="tv-layout">
                                     <div className="col-left"><div className="bento-tile time-tile"><LiveClock /></div><div className="bento-tile date-tile"><LiveDate /></div></div>
-                                    <div className="col-middle">
-                                        <div className={`bento-tile hero-tile ${isBlinking ? 'hero-active' : ''}`}>
-                                            {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl animate-pulse">Start Audio</button></div>}
-                                            <div className="hero-label">Now Calling</div><div className="huge-number">{currentCaller?.num || '---'}</div><div className="huge-location">{currentCaller?.loc || 'STANDBY'}</div>
-                                        </div>
-                                    </div>
-                                    <div className="col-right">
-                                        <div className="bento-tile monitor-tile">
-                                            <div className="monitor-header"><span>No.</span><span>Location</span><span>Status</span></div>
-                                            <div className="monitor-scroll">{queue.slice(0,30).map(p => (<div key={p.id} className="monitor-item"><span className="text-4xl font-black text-slate-800">#{p.num}</span><span className="text-xl font-bold text-blue-600 uppercase truncate w-full">{p.loc.replace('Waiting Area', 'Wait')}</span>{getStatusBadge(p.status)}</div>))}</div>
-                                        </div>
-                                    </div>
+                                    <div className="col-middle"><div className={`bento-tile hero-tile ${isBlinking ? 'hero-active' : ''}`}>{!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl animate-pulse">Start Audio</button></div>}<div className="hero-label">Now Calling</div><div className="huge-number">{currentCaller?.num || '---'}</div><div className="huge-location">{currentCaller?.loc || 'STANDBY'}</div></div></div>
+                                    <div className="col-right"><div className="bento-tile monitor-tile"><div className="monitor-header"><span>No.</span><span>Location</span><span>Status</span></div><div className="monitor-scroll">{queue.slice(0,30).map(p => (<div key={p.id} className="monitor-item"><span className="text-4xl font-black text-slate-800">#{p.num}</span><span className="text-xl font-bold text-blue-600 uppercase truncate w-full">{p.loc.replace('Waiting Area', 'Wait')}</span>{getStatusBadge(p.status)}</div>))}</div></div></div>
                                 </div>
-                                <div className="ticker-container">
-                                    <div className="ticker-layer-2" style={{backgroundColor: t2Bg, color: t2Color}}><div className="ticker-move-fast">{t2Text}</div></div>
-                                    <div className="ticker-layer-1" style={{backgroundColor: t1Bg, color: t1Color}}><div className="ticker-move-slow">{t1Text}</div></div>
-                                </div>
+                                <div className="ticker-container"><div className="ticker-layer-2" style={{backgroundColor: t2Bg, color: t2Color}}><div className="ticker-move-fast">{t2Text}</div></div><div className="ticker-layer-1" style={{backgroundColor: t1Bg, color: t1Color}}><div className="ticker-move-slow">{t1Text}</div></div></div>
                             </div>
                         ) : view === 'reg' ? (
                             <div className="reg-layout">
-                                <div className="bento-tile bg-blue-600 p-8 shadow-2xl flex flex-col justify-center gap-6">
-                                    <h1 className="text-2xl font-black text-white uppercase tracking-tighter text-center">New Registration</h1>
-                                    <input className="reg-uniform-box reg-input-style" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value.toUpperCase())} />
-                                    <input className="reg-uniform-box reg-input-style" type="number" placeholder="Queue Number" value={inputNum} onChange={e => setInputNum(e.target.value)} />
-                                    <button className="reg-uniform-box reg-btn-primary" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting Area', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>Register</button>
-                                    <button className="reg-uniform-box reg-btn-secondary" onClick={() => handlePrint(lastTicket)}>Reprint Ticket</button>
+                                <div className="bento-tile bg-blue-600 p-8 shadow-2xl flex flex-col justify-center gap-6"><h1 className="text-2xl font-black text-white uppercase tracking-tighter text-center">New Registration</h1><input className="reg-uniform-box reg-input-style" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value.toUpperCase())} /><input className="reg-uniform-box reg-input-style" type="number" placeholder="Queue Number" value={inputNum} onChange={e => setInputNum(e.target.value)} /><button className="reg-uniform-box reg-btn-primary" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting Area', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>Register</button><button className="reg-uniform-box reg-btn-secondary" onClick={() => handlePrint(lastTicket)}>Reprint Ticket</button></div>
+                                
+                                {/* RESTRUCTURED MIDDLE PANEL */}
+                                <div className="flex flex-col gap-4 h-full">
+                                    <div className="stat-container">
+                                        <div className="stat-square bg-blue-500"><span className="text-6xl font-black">{pendingDr}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Dr</span></div>
+                                        <div className="stat-square bg-red-500"><span className="text-6xl font-black">{pendingPharm}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Pharm</span></div>
+                                        <div className="stat-square bg-green-500"><span className="text-6xl font-black">{totalPatients}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Total</span></div>
+                                    </div>
+                                    <div className="bento-tile bg-yellow-100 flex-1 p-6 items-start text-left relative shadow-sm" style={{borderRadius:'2rem'}}>
+                                        <h3 className="font-bold text-yellow-700 mb-2 flex items-center gap-2"><i className="ri-sticky-note-fill"></i> Staff Notice Board</h3>
+                                        <textarea className="w-full h-full bg-transparent resize-none outline-none text-yellow-900 font-medium text-sm" placeholder="Type important notices here (e.g. Break times, VIPs)..." value={clinicNote} onChange={(e) => setClinicNote(e.target.value)} onBlur={saveNote}></textarea>
+                                        <div className="absolute bottom-4 right-4 text-[10px] text-yellow-600 font-bold uppercase opacity-50">Auto-saves</div>
+                                    </div>
                                 </div>
-                                <div className="stat-container">
-                                    <div className="stat-square bg-blue-500"><span className="text-6xl font-black">{pendingDr}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Dr</span></div>
-                                    <div className="stat-square bg-red-500"><span className="text-6xl font-black">{pendingPharm}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Pharm</span></div>
-                                    <div className="stat-square bg-green-500"><span className="text-6xl font-black">{totalPatients}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Total</span></div>
-                                </div>
-                                <div className="admin-panel admin-panel-col shadow-sm">
-                                    <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Queue Monitor</div>
-                                    <div className="flex-1 overflow-y-auto p-2 monitor-scroll">{queue.slice(0,15).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold text-lg">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}</div>
+
+                                <div className="flex flex-col gap-4 h-full overflow-hidden">
+                                    <div className="admin-panel flex flex-col flex-1 min-h-0"><div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Queue Monitor</div><div className="flex-1 overflow-y-auto p-2 monitor-scroll">{queue.slice(0,10).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold text-lg">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase line-clamp-2 leading-tight">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}</div></div>
+                                    <div className="admin-panel flex flex-col flex-1 min-h-0">
+                                        <div className="chat-header">
+                                            <div className="chat-header-row"><span>Chat</span><span className="chat-role-display">Registration</span></div>
+                                            <div className="text-[9px] text-red-400 font-normal normal-case mt-1">⚠ Messages auto-delete after 10 mins</div>
+                                        </div>
+                                        <div className="chat-container">
+                                            <div className="chat-messages">{chatMessages.map((msg, i) => { const isMe = msg.sender === 'Registration'; let roleColor = 'chat-me-slate'; if (msg.sender === 'Room 1') roleColor = 'chat-me-blue'; if (msg.sender === 'Room 2') roleColor = 'chat-me-purple'; if (msg.sender === 'Dispensary') roleColor = 'chat-me-green'; return (<div key={i} className={`chat-bubble ${isMe ? `chat-me ${roleColor}` : 'chat-other'}`}>{msg.text}<span className="chat-time">{new Date(msg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {msg.sender}</span></div>) })}<div ref={chatEndRef} /></div>
+                                            <form onSubmit={sendChat} className="chat-input-area"><input className="chat-input" placeholder="Type..." value={chatInput} onChange={e => setChatInput(e.target.value)} /><button type="submit" className="bg-slate-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm"><i className="ri-send-plane-fill text-xs"></i></button></form>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ) : (
                             <div className="admin-layout">
                                 <div className="admin-panel admin-panel-col">
-                                    <div className="p-4 border-b bg-slate-100 flex justify-between items-center">
-                                        <div className="font-bold text-xs uppercase tracking-widest text-slate-500">{view} CONSOLE — {branch}</div>
-                                        <div className="flex gap-2">
-                                            {selectedIds.length > 0 && <button onClick={deleteSelected} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold uppercase">Delete ({selectedIds.length})</button>}
-                                            <button onClick={clearAllDone} className="bg-slate-300 hover:bg-red-500 hover:text-white transition px-3 py-1 rounded text-xs font-bold uppercase">Clear Done</button>
-                                        </div>
-                                    </div>
+                                    <div className="p-4 border-b bg-slate-100 flex justify-between items-center"><div className="font-bold text-xs uppercase tracking-widest text-slate-500">{view} CONSOLE — {branch}</div><div className="flex gap-2">{selectedIds.length > 0 && <button onClick={deleteSelected} className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold uppercase">Delete ({selectedIds.length})</button>}<button onClick={clearAllDone} className="bg-slate-300 hover:bg-red-500 hover:text-white transition px-3 py-1 rounded text-xs font-bold uppercase">Clear Done</button></div></div>
                                     <div className="flex-1 overflow-y-auto p-2 monitor-scroll">
                                         {queue.map(p => (
                                             <div key={p.id} className={`p-4 border-b flex items-center gap-4 transition-all ${p.status === 'finished' ? 'bg-slate-100 opacity-60' : 'hover:bg-slate-50'}`}>
                                                 <input type="checkbox" className="checkbox-custom" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} />
                                                 <div className="w-12 text-xl font-black">#{p.num}</div>
-                                                <div className="w-32 flex flex-col"><span className="font-bold text-sm uppercase text-slate-700 truncate">{p.name || '---'}</span></div>
-                                                {view === 'doc' && (<div className="flex-1 flex gap-2"><span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border uppercase truncate w-20">{p.loc}</span><span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase w-20 text-center ${p.status==='calling'?'bg-red-100 text-red-600': p.status==='finished'?'bg-slate-200 text-slate-500':'bg-white text-slate-400'}`}>{p.status}</span></div>)}
-                                                {view === 'pharmacy' && (<div className="flex-1"><textarea defaultValue={p.remarks} onBlur={e => updatePatient(p.id, p.status, p.loc, false, e.target.value)} className="w-full text-xs p-2 bg-yellow-50 border rounded h-10 resize-none" placeholder="Note..."/></div>)}
+                                                
+                                                {/* FLUID NAME CONTAINER - NO TRUNCATE */}
+                                                <div className="flex-1 min-w-0 flex flex-col pr-2">
+                                                    <span className="font-bold text-sm uppercase text-slate-700 leading-tight break-words">{p.name || '---'}</span>
+                                                </div>
+
+                                                {view === 'doc' && (<div className="flex-shrink-0 flex gap-2"><span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border uppercase truncate w-20">{p.loc}</span><span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase w-20 text-center ${p.status==='calling'?'bg-red-100 text-red-600': p.status==='finished'?'bg-slate-200 text-slate-500':'bg-white text-slate-400'}`}>{p.status}</span></div>)}
+                                                
+                                                {/* PHARMACY NOTE BOX (LARGER) */}
+                                                {view === 'pharmacy' && (<div className="flex-shrink-0"><textarea defaultValue={p.remarks} onBlur={e => updatePatient(p.id, p.status, p.loc, false, e.target.value)} className="w-64 text-xs p-2 bg-yellow-50 border rounded h-16 resize-none" placeholder="Note..."/></div>)}
+                                                
                                                 <div className="flex gap-1 flex-shrink-0">
                                                     {view === 'doc' ? (<>{rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}<button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button></>) : (<><button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button><button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button></>)}
                                                     <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 px-2 font-bold hover:text-red-500">✕</button>
@@ -454,10 +548,40 @@
                                         ))}
                                     </div>
                                 </div>
-                                <div className="admin-panel admin-panel-col">
-                                    <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Activity (Internal)</div>
-                                    <div className="flex-1 overflow-y-auto p-2 monitor-scroll">
-                                        {queue.slice(0,15).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase truncate w-24">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}
+                                <div className="flex flex-col h-full gap-4 overflow-hidden">
+                                    <div className="admin-panel flex flex-col flex-1 min-h-0">
+                                        <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Activity (Internal)</div>
+                                        <div className="flex-1 overflow-y-auto p-2 monitor-scroll">{queue.slice(0,10).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase line-clamp-2 leading-tight">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}</div>
+                                    </div>
+                                    <div className="admin-panel flex flex-col flex-1 min-h-0">
+                                        <div className="chat-header">
+                                            <div className="chat-header-row">
+                                                <span>Chat</span>
+                                                {/* SMART ROLE DISPLAY */}
+                                                {view === 'reg' && <span className="chat-role-display">Registration</span>}
+                                                {view === 'pharmacy' && <span className="chat-role-display text-green-600">Dispensary</span>}
+                                                {view === 'doc' && (
+                                                    <select className="chat-room-select" value={docRoomPref} onChange={handleDocRoomChange}>
+                                                        {rooms.map(r => <option key={r} value={r}>{r}</option>)}
+                                                    </select>
+                                                )}
+                                            </div>
+                                            <div className="text-[9px] text-red-400 font-normal normal-case mt-1">⚠ Messages auto-delete after 10 mins</div>
+                                        </div>
+                                        <div className="chat-container">
+                                            <div className="chat-messages">
+                                                {chatMessages.map((msg, i) => {
+                                                    const isMe = msg.sender === getCurrentIdentity();
+                                                    let roleColor = 'chat-me-slate';
+                                                    if (msg.sender === 'Room 1') roleColor = 'chat-me-blue';
+                                                    if (msg.sender === 'Room 2') roleColor = 'chat-me-purple';
+                                                    if (msg.sender === 'Dispensary') roleColor = 'chat-me-green';
+                                                    return (<div key={i} className={`chat-bubble ${isMe ? `chat-me ${roleColor}` : 'chat-other'}`}>{msg.text}<span className="chat-time">{new Date(msg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {msg.sender}</span></div>)
+                                                })}
+                                                <div ref={chatEndRef} />
+                                            </div>
+                                            <form onSubmit={sendChat} className="chat-input-area"><input className="chat-input" placeholder="Type..." value={chatInput} onChange={e => setChatInput(e.target.value)} /><button type="submit" className="bg-slate-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm"><i className="ri-send-plane-fill text-xs"></i></button></form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
