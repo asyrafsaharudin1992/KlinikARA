@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AraQue Pro - v27.0 (Auto-Delete Chat)</title>
+    <title>AraQue Pro - Lite v27.0</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -50,7 +50,9 @@
 
         /* --- TV STYLES --- */
         .tv-screen { background: #0f172a; background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%); height: 100%; width: 100%; display: flex; flex-direction: column; overflow: hidden; }
-        .tv-layout { display: grid; grid-template-columns: 320px 1fr 480px; gap: 24px; padding: 30px; padding-bottom: 140px; height: 100%; overflow: hidden; }
+        .tv-layout { display: grid; grid-template-columns: 320px 1fr 480px; gap: 24px; padding: 30px; padding-bottom: 30px; height: 100%; overflow: hidden; }
+        .tv-layout.with-ticker { padding-bottom: 140px; } /* Adjust padding if ticker is on */
+
         .col-left, .col-middle { display: flex; flex-direction: column; gap: 24px; height: 100%; }
         .col-right { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
         
@@ -87,7 +89,7 @@
         .badge-pharm { background: #fef9c3; color: #ca8a04; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
 
         /* --- REGISTRATION PAGE --- */
-        .reg-layout { display: grid; grid-template-columns: 400px 1fr 350px; gap: 24px; padding: 24px; height: 100%; background: #f1f5f9; }
+        .reg-layout { display: grid; grid-template-columns: 400px 1fr; gap: 24px; padding: 24px; height: 100%; background: #f1f5f9; }
         .reg-uniform-box { height: 80px; width: 100%; border-radius: 1.5rem; border: none; font-weight: 700; display: flex; align-items: center; justify-content: center; outline: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.1s; }
         .reg-uniform-box:active { transform: scale(0.98); }
         .reg-input-style { background-color: #f8fafc; color: #1e293b; font-size: 1.2rem; padding: 0 20px; text-align: center; }
@@ -100,7 +102,7 @@
         .stat-square:hover { transform: translateY(-2px); }
 
         /* ADMIN UTILS */
-        .admin-layout { display: grid; grid-template-columns: 1fr 400px; height: 100%; gap: 24px; padding: 24px; background: #f1f5f9; }
+        .admin-layout { display: grid; grid-template-columns: 1fr; height: 100%; gap: 24px; padding: 24px; background: #f1f5f9; }
         .admin-panel { background: white; border-radius: 2rem !important; overflow: hidden; border: 1px solid #cbd5e1; }
         .admin-panel-col { display: flex; flex-direction: column; height: 100%; min-height: 0; }
         .no-spinner::-webkit-inner-spin-button, .no-spinner::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -116,28 +118,6 @@
         .alert-btn:hover { background: #fecaca; }
         .alert-btn:active { transform: scale(0.95); }
 
-        /* CHAT UTILS */
-        .chat-container { display: flex; flex-direction: column; height: 100%; background: #f8fafc; overflow: hidden; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-        .chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; position: relative; word-wrap: break-word; }
-        .chat-me { align-self: flex-end; color: white; border-bottom-right-radius: 2px; }
-        
-        /* CHAT COLORS */
-        .chat-me-blue { background: #2563eb; } /* Room 1 */
-        .chat-me-purple { background: #7c3aed; } /* Room 2 */
-        .chat-me-green { background: #10b981; } /* Dispensary */
-        .chat-me-slate { background: #475569; } /* Registration */
-        
-        .chat-other { align-self: flex-start; background: #e2e8f0; color: #1e293b; border-bottom-left-radius: 2px; }
-        .chat-time { font-size: 9px; opacity: 0.7; margin-top: 4px; display: block; text-align: right; }
-        .chat-input-area { padding: 10px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; flex-shrink: 0; }
-        .chat-input { flex: 1; background: #f1f5f9; border: none; padding: 8px 12px; border-radius: 20px; font-size: 13px; outline: none; }
-        
-        /* Updated Chat Header */
-        .chat-header { padding: 12px; border-bottom: 1px solid #f1f5f9; background: white; display: flex; flex-direction: column; justify-content: center; gap: 4px; flex-shrink: 0; }
-        .chat-header-row { display: flex; justify-content: space-between; align-items: center; width: 100%; font-weight: 700; font-size: 12px; text-transform: uppercase; color: #94a3b8; }
-        .chat-role-display { font-weight: 800; color: #1e293b; }
-        .chat-room-select { background: #f1f5f9; border: none; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 700; outline: none; color: #2563eb; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -191,20 +171,8 @@
             const [selectedIds, setSelectedIds] = React.useState([]);
             const [isConnected, setIsConnected] = React.useState(true);
             
-            // Chat State
-            const [chatMessages, setChatMessages] = React.useState([]);
-            const [chatInput, setChatInput] = React.useState('');
-            const chatEndRef = React.useRef(null);
-
             // --- SMART ROLE STATE ---
             const [docRoomPref, setDocRoomPref] = React.useState(localStorage.getItem('doc_room_pref') || 'Room 1');
-
-            const getCurrentIdentity = () => {
-                if (view === 'reg') return 'Registration';
-                if (view === 'pharmacy') return 'Dispensary';
-                if (view === 'doc') return docRoomPref;
-                return 'Unknown';
-            };
 
             const handleDocRoomChange = (e) => {
                 const newRoom = e.target.value;
@@ -217,6 +185,8 @@
             const [t1Bg, setT1Bg] = React.useState('#2563eb'); const [t1Color, setT1Color] = React.useState('#ffffff');
             const [t2Text, setT2Text] = React.useState('Sila pastikan nombor giliran anda adalah betul.');
             const [t2Bg, setT2Bg] = React.useState('#dc2626'); const [t2Color, setT2Color] = React.useState('#ffffff');
+            const [tickersEnabled, setTickersEnabled] = React.useState(true); // NEW: Ticker Toggle
+
             const [rooms, setRooms] = React.useState(['Room 1', 'Room 2', 'Room 3']);
             const [ticketHeader, setTicketHeader] = React.useState('KLINIK ARA 24 JAM');
             const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
@@ -232,7 +202,7 @@
             // Alerting State
             const [pharmacyAlertData, setPharmacyAlertData] = React.useState({ msg: '', loc: '' });
             const [showPharmAlert, setShowPharmAlert] = React.useState(false);
-            const lastAlertRef = React.useRef(Date.now());
+            const [lastAlertRef] = React.useState({current: Date.now()}); // Fixed ref usage
 
             // Doctor Alert Modal State
             const [isDocAlertOpen, setIsDocAlertOpen] = React.useState(false);
@@ -263,16 +233,7 @@
                     setIsConnected(true);
                 }, (err) => setIsConnected(false));
                 
-                // 2. CHAT Listener
-                const unsubChat = db.collection("branches").doc(branch).collection("chat")
-                    .orderBy("time", "asc")
-                    .limitToLast(50)
-                    .onSnapshot(snap => {
-                        setChatMessages(snap.docs.map(d => d.data()));
-                        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-                    });
-
-                // 3. SETTINGS Listener
+                // 2. SETTINGS Listener
                 const unsubC = db.collection("branches").doc(branch).collection("settings").doc("config").onSnapshot(doc => {
                     if (doc.exists) {
                         const d = doc.data();
@@ -281,6 +242,7 @@
                         setTicketFooter(d.ticketFooter || 'Moga segala urusan dimudahkan.');
                         setT1Text(d.t1Text || 'Selamat datang ke KLINIK ARA 24 JAM.'); setT1Bg(d.t1Bg || '#2563eb'); setT1Color(d.t1Color || '#ffffff');
                         setT2Text(d.t2Text || 'Sila pastikan nombor giliran anda adalah betul.'); setT2Bg(d.t2Bg || '#dc2626'); setT2Color(d.t2Color || '#ffffff');
+                        setTickersEnabled(d.tickersEnabled !== undefined ? d.tickersEnabled : true);
                         setClinicNote(d.clinicNote || '');
                         
                         setChimeEnabled(d.chimeEnabled !== undefined ? d.chimeEnabled : true);
@@ -303,43 +265,17 @@
                     } else {
                         setRooms(['Room 1', 'Room 2', 'Room 3']);
                         setChimeEnabled(true);
+                        setTickersEnabled(true);
                         setPharmAlertSoundEnabled(false);
                     }
                 });
 
-                // 4. AUTO-DELETE CLEANUP (Run every 60s)
-                const cleanupInterval = setInterval(() => {
-                    const cutoff = Date.now() - 10 * 60 * 1000; // 10 minutes ago
-                    db.collection("branches").doc(branch).collection("chat")
-                      .where("time", "<", cutoff)
-                      .get()
-                      .then(snap => {
-                          if (!snap.empty) {
-                              const batch = db.batch();
-                              snap.forEach(doc => batch.delete(doc.ref));
-                              batch.commit().catch(e => console.log("Cleanup error", e));
-                          }
-                      });
-                }, 60000);
-
-                return () => { unsubQ(); unsubC(); unsubChat(); clearInterval(cleanupInterval); };
+                return () => { unsubQ(); unsubC(); };
             }, [branch, view]);
 
             const updateSettings = (updates) => db.collection("branches").doc(branch).collection("settings").doc("config").set(updates, {merge:true});
             const saveNote = () => updateSettings({ clinicNote: clinicNote });
             
-            const sendChat = (e) => {
-                e.preventDefault();
-                if (!chatInput.trim()) return;
-                
-                db.collection("branches").doc(branch).collection("chat").add({
-                    text: chatInput,
-                    sender: getCurrentIdentity(), 
-                    time: Date.now()
-                });
-                setChatInput('');
-            };
-
             const currentCaller = queue.filter(p => p.callTrigger && p.status === 'calling').sort((a,b) => b.callTrigger - a.callTrigger)[0];
             const lastCallId = React.useRef(0);
 
@@ -444,12 +380,12 @@
                                 <div className="p-5 border-b bg-slate-50 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">Settings</h2><button onClick={() => setIsSettingsOpen(false)} className="bg-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-sm font-bold">Done</button></div>
                                 <div className="p-6 overflow-y-auto bg-slate-100 space-y-6">
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div><div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div></div></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}</div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}<div className="ios-item"><span className="ios-label">Show Tickers on TV</span><IOSToggle checked={tickersEnabled} onChange={(val) => { setTickersEnabled(val); updateSettings({tickersEnabled: val}); }} /></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Pharmacy Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3><div className="ios-group"><div className="ios-item-col"><div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div><div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3><div className="ios-group"><div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div><div className="ios-item-col"><span className="ios-label text-red-600">Top Ticker</span><textarea className="ios-textarea" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div></div></div>
                                     <div className="ios-group"><div className="ios-item" onClick={() => {if(confirm("DANGER: Wipe database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}><span className="ios-label text-red-500 w-full text-center cursor-pointer">Factory Reset Database</span></div></div>
-                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">AraQue Pro v27.0 • Dev: Dr Asyraf</div>
+                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">AraQue Lite v27.0 • Dev: Dr Asyraf</div>
                                 </div>
                             </div>
                         </div>
@@ -467,7 +403,7 @@
 
                     {/* NAV */}
                     <nav className="global-nav">
-                        <div className="flex items-center gap-6"><span onClick={() => view === 'tv' && setView('reg')} className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}>AraQue Pro</span><select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                        <div className="flex items-center gap-6"><span onClick={() => view === 'tv' && setView('reg')} className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}>AraQue Lite</span><select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
                         <div className={`flex gap-1 items-center ${view === 'tv' ? 'hidden' : ''}`}>
                             {view === 'doc' && (<button onClick={() => setIsDocAlertOpen(true)} className="mr-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition p-2 rounded-full shadow-sm" title="Alert Pharmacy"><i className="ri-notification-3-fill text-xl"></i></button>)}
                             {['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}
@@ -481,12 +417,14 @@
 
                         {view === 'tv' ? (
                             <div className="tv-screen">
-                                <div className="tv-layout">
+                                <div className={`tv-layout ${tickersEnabled ? 'with-ticker' : ''}`}>
                                     <div className="col-left"><div className="bento-tile time-tile"><LiveClock /></div><div className="bento-tile date-tile"><LiveDate /></div></div>
                                     <div className="col-middle"><div className={`bento-tile hero-tile ${isBlinking ? 'hero-active' : ''}`}>{!audioOn && <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md"><button className="bg-blue-600 text-white px-8 py-4 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl animate-pulse">Start Audio</button></div>}<div className="hero-label">Now Calling</div><div className="huge-number">{currentCaller?.num || '---'}</div><div className="huge-location">{currentCaller?.loc || 'STANDBY'}</div></div></div>
                                     <div className="col-right"><div className="bento-tile monitor-tile"><div className="monitor-header"><span>No.</span><span>Location</span><span>Status</span></div><div className="monitor-scroll">{queue.slice(0,30).map(p => (<div key={p.id} className="monitor-item"><span className="text-4xl font-black text-slate-800">#{p.num}</span><span className="text-xl font-bold text-blue-600 uppercase truncate w-full">{p.loc.replace('Waiting Area', 'Wait')}</span>{getStatusBadge(p.status)}</div>))}</div></div></div>
                                 </div>
-                                <div className="ticker-container"><div className="ticker-layer-2" style={{backgroundColor: t2Bg, color: t2Color}}><div className="ticker-move-fast">{t2Text}</div></div><div className="ticker-layer-1" style={{backgroundColor: t1Bg, color: t1Color}}><div className="ticker-move-slow">{t1Text}</div></div></div>
+                                {tickersEnabled && (
+                                    <div className="ticker-container"><div className="ticker-layer-2" style={{backgroundColor: t2Bg, color: t2Color}}><div className="ticker-move-fast">{t2Text}</div></div><div className="ticker-layer-1" style={{backgroundColor: t1Bg, color: t1Color}}><div className="ticker-move-slow">{t1Text}</div></div></div>
+                                )}
                             </div>
                         ) : view === 'reg' ? (
                             <div className="reg-layout">
@@ -503,20 +441,6 @@
                                         <h3 className="font-bold text-yellow-700 mb-2 flex items-center gap-2"><i className="ri-sticky-note-fill"></i> Staff Notice Board</h3>
                                         <textarea className="w-full h-full bg-transparent resize-none outline-none text-yellow-900 font-medium text-sm" placeholder="Type important notices here (e.g. Break times, VIPs)..." value={clinicNote} onChange={(e) => setClinicNote(e.target.value)} onBlur={saveNote}></textarea>
                                         <div className="absolute bottom-4 right-4 text-[10px] text-yellow-600 font-bold uppercase opacity-50">Auto-saves</div>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-4 h-full overflow-hidden">
-                                    <div className="admin-panel flex flex-col flex-1 min-h-0"><div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Queue Monitor</div><div className="flex-1 overflow-y-auto p-2 monitor-scroll">{queue.slice(0,10).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold text-lg">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase line-clamp-2 leading-tight">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}</div></div>
-                                    <div className="admin-panel flex flex-col flex-1 min-h-0">
-                                        <div className="chat-header">
-                                            <div className="chat-header-row"><span>Chat</span><span className="chat-role-display">Registration</span></div>
-                                            <div className="text-[9px] text-red-400 font-normal normal-case mt-1">⚠ Messages auto-delete after 10 mins</div>
-                                        </div>
-                                        <div className="chat-container">
-                                            <div className="chat-messages">{chatMessages.map((msg, i) => { const isMe = msg.sender === 'Registration'; let roleColor = 'chat-me-slate'; if (msg.sender === 'Room 1') roleColor = 'chat-me-blue'; if (msg.sender === 'Room 2') roleColor = 'chat-me-purple'; if (msg.sender === 'Dispensary') roleColor = 'chat-me-green'; return (<div key={i} className={`chat-bubble ${isMe ? `chat-me ${roleColor}` : 'chat-other'}`}>{msg.text}<span className="chat-time">{new Date(msg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {msg.sender}</span></div>) })}<div ref={chatEndRef} /></div>
-                                            <form onSubmit={sendChat} className="chat-input-area"><input className="chat-input" placeholder="Type..." value={chatInput} onChange={e => setChatInput(e.target.value)} /><button type="submit" className="bg-slate-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm"><i className="ri-send-plane-fill text-xs"></i></button></form>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -546,42 +470,6 @@
                                                 </div>
                                             </div>
                                         ))}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col h-full gap-4 overflow-hidden">
-                                    <div className="admin-panel flex flex-col flex-1 min-h-0">
-                                        <div className="p-4 border-b bg-slate-50 font-bold text-xs uppercase text-slate-400">Activity (Internal)</div>
-                                        <div className="flex-1 overflow-y-auto p-2 monitor-scroll">{queue.slice(0,10).map(p => (<div key={p.id} className="p-3 flex justify-between items-center border-b border-slate-50"><div className="flex flex-col"><span className="font-bold">#{p.num}</span><span className="text-[10px] text-slate-400 uppercase line-clamp-2 leading-tight">{p.name}</span></div><span className="text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.loc}</span></div>))}</div>
-                                    </div>
-                                    <div className="admin-panel flex flex-col flex-1 min-h-0">
-                                        <div className="chat-header">
-                                            <div className="chat-header-row">
-                                                <span>Chat</span>
-                                                {/* SMART ROLE DISPLAY */}
-                                                {view === 'reg' && <span className="chat-role-display">Registration</span>}
-                                                {view === 'pharmacy' && <span className="chat-role-display text-green-600">Dispensary</span>}
-                                                {view === 'doc' && (
-                                                    <select className="chat-room-select" value={docRoomPref} onChange={handleDocRoomChange}>
-                                                        {rooms.map(r => <option key={r} value={r}>{r}</option>)}
-                                                    </select>
-                                                )}
-                                            </div>
-                                            <div className="text-[9px] text-red-400 font-normal normal-case mt-1">⚠ Messages auto-delete after 10 mins</div>
-                                        </div>
-                                        <div className="chat-container">
-                                            <div className="chat-messages">
-                                                {chatMessages.map((msg, i) => {
-                                                    const isMe = msg.sender === getCurrentIdentity();
-                                                    let roleColor = 'chat-me-slate';
-                                                    if (msg.sender === 'Room 1') roleColor = 'chat-me-blue';
-                                                    if (msg.sender === 'Room 2') roleColor = 'chat-me-purple';
-                                                    if (msg.sender === 'Dispensary') roleColor = 'chat-me-green';
-                                                    return (<div key={i} className={`chat-bubble ${isMe ? `chat-me ${roleColor}` : 'chat-other'}`}>{msg.text}<span className="chat-time">{new Date(msg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {msg.sender}</span></div>)
-                                                })}
-                                                <div ref={chatEndRef} />
-                                            </div>
-                                            <form onSubmit={sendChat} className="chat-input-area"><input className="chat-input" placeholder="Type..." value={chatInput} onChange={e => setChatInput(e.target.value)} /><button type="submit" className="bg-slate-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm"><i className="ri-send-plane-fill text-xs"></i></button></form>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
