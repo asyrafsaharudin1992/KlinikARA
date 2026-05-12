@@ -197,55 +197,62 @@
             min-height: 0;
         }
 
-        /* Now Calling — 40% of right column */
+        /* Now Calling — 50% of right column */
         .now-calling-wrapper {
-            flex: 2;
+            flex: 1;
             min-height: 0;
             position: relative;
             background: #f8fafc;
             color: #1e293b;
             border: 1px solid rgba(255,255,255,0.1);
+            padding: clamp(16px, 3vh, 32px) 12px;
         }
 
-        /* Queue Monitor — 60% of right column */
+        /* Queue Monitor — 50% of right column */
         .monitor-wrapper {
-            flex: 3;
+            flex: 1;
             min-height: 0;
             height: auto !important;
         }
 
         .nc-label {
-            font-size: clamp(0.7rem, 1.4vh, 1.05rem);
+            font-size: clamp(0.8rem, 1.8vh, 1.25rem);
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.3em;
+            letter-spacing: 0.35em;
             color: #94a3b8;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
             line-height: 1;
         }
         .nc-number {
-            font-size: clamp(2.8rem, 11vh, 7.5rem);
+            font-size: clamp(5rem, 26vh, 16rem);
             font-weight: 900;
-            line-height: 0.9;
+            line-height: 0.85;
             color: #0f172a;
-            letter-spacing: -0.05em;
-            text-shadow: 3px 3px 0px #e2e8f0;
-            margin: 2px 0;
+            letter-spacing: -0.06em;
+            text-shadow: 5px 5px 0px #e2e8f0;
+            margin: 6px 0 10px;
         }
         .nc-location {
-            font-size: clamp(0.9rem, 2.2vh, 1.7rem);
+            font-size: clamp(1.1rem, 2.8vh, 2.2rem);
             font-weight: 800;
-            color: #334155;
+            color: #1d4ed8;
             text-transform: uppercase;
-            letter-spacing: -0.01em;
+            letter-spacing: 0.06em;
             text-align: center;
-            line-height: 1.05;
-            margin-top: 4px;
-            padding: 0 8px;
-            max-width: 100%;
+            line-height: 1;
+            margin-top: clamp(8px, 1.5vh, 18px);
+            padding: clamp(8px, 1.4vh, 14px) clamp(20px, 3vw, 36px);
+            background: #dbeafe;
+            border: 1px solid rgba(37, 99, 235, 0.18);
+            border-radius: 999px;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.18);
+            display: inline-block;
+            max-width: 90%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            align-self: center;
         }
 
         /* SLIDESHOW TILE */
@@ -434,6 +441,55 @@
         try { if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); } catch(e){ console.error(e); }
         const db = firebase.firestore();
 
+        // --- ALERT SOUND PRESETS (Web Audio synthesis — no network, works on Tizen) ---
+        const ALERT_SOUNDS = {
+            beep:      { label: 'Beep',                play: (ctx) => synthTone(ctx, [{ f: 880,  d: 0.25, type: 'square' }]) },
+            doubleBeep:{ label: 'Double Beep',         play: (ctx) => synthTone(ctx, [{ f: 880, s: 0,    d: 0.15, type: 'square' }, { f: 880, s: 0.2, d: 0.15, type: 'square' }]) },
+            tripleBeep:{ label: 'Triple Beep (Urgent)',play: (ctx) => synthTone(ctx, [{ f: 1000,s: 0,    d: 0.12 }, { f: 1000, s: 0.18, d: 0.12 }, { f: 1000, s: 0.36, d: 0.12 }], 'square') },
+            ding:      { label: 'Ding (High)',         play: (ctx) => synthTone(ctx, [{ f: 1320, d: 0.7,  type: 'sine' }]) },
+            chime:     { label: 'Chime (Ding-Dong)',   play: (ctx) => synthTone(ctx, [{ f: 880, s: 0,    d: 0.4,  type: 'sine' }, { f: 660, s: 0.32, d: 0.55, type: 'sine' }]) },
+            notify:    { label: 'Notification (Rising)',play: (ctx) => synthTone(ctx, [{ f: 660, s: 0,    d: 0.15, type: 'sine' }, { f: 880, s: 0.12, d: 0.4,  type: 'sine' }]) },
+            softBell:  { label: 'Soft Bell',           play: (ctx) => synthBell(ctx) }
+        };
+
+        // Generic tone synthesizer — takes an array of {f, s, d, type} (freq, start offset, duration, oscillator type)
+        function synthTone(ctx, notes, defaultType) {
+            notes.forEach(n => {
+                try {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = n.type || defaultType || 'sine';
+                    o.frequency.value = n.f;
+                    const start = ctx.currentTime + (n.s || 0);
+                    g.gain.setValueAtTime(0.0001, start);
+                    g.gain.linearRampToValueAtTime(0.35, start + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.001, start + n.d);
+                    o.start(start);
+                    o.stop(start + n.d);
+                } catch(e) { console.warn('Tone synth failed', e); }
+            });
+        }
+
+        // Soft bell — two sine waves at harmonic interval for richer texture
+        function synthBell(ctx) {
+            try {
+                [{ f: 880, vol: 0.3 }, { f: 1108, vol: 0.18 }].forEach(part => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sine';
+                    o.frequency.value = part.f;
+                    const t = ctx.currentTime;
+                    g.gain.setValueAtTime(0.0001, t);
+                    g.gain.linearRampToValueAtTime(part.vol, t + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+                    o.start(t);
+                    o.stop(t + 1.5);
+                });
+            } catch(e) { console.warn('Bell synth failed', e); }
+        }
+
         const LiveClock = ({ compact = false }) => {
             const [time, setTime] = React.useState(new Date());
             React.useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -540,6 +596,7 @@
             
             const [chimeEnabled, setChimeEnabled] = React.useState(true); 
             const [pharmAlertSoundEnabled, setPharmAlertSoundEnabled] = React.useState(false); 
+            const [alertSoundType, setAlertSoundType] = React.useState('beep');
             const [voiceGender, setVoiceGender] = React.useState('female');
             const [animEnabled, setAnimEnabled] = React.useState(true);
             const [animDuration, setAnimDuration] = React.useState(3);
@@ -575,7 +632,38 @@
             const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
             
             const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
-            const alertRef = React.useRef(new Audio('https://www.soundjay.com/buttons/beep-01a.mp3')); 
+            const audioCtxRef = React.useRef(null);
+
+            // Lazily initialize AudioContext on first interaction so alert sounds work from
+            // any view, not just TV. Chrome starts the context "suspended" until a user gesture
+            // touches the page — clicking anywhere unsuspends it.
+            React.useEffect(() => {
+                const unlock = () => {
+                    if (!audioCtxRef.current) {
+                        try {
+                            const Ctx = window.AudioContext || window.webkitAudioContext;
+                            if (Ctx) audioCtxRef.current = new Ctx();
+                        } catch(e) { console.warn('AudioContext init failed', e); }
+                    }
+                    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+                        audioCtxRef.current.resume();
+                    }
+                };
+                document.addEventListener('click', unlock);
+                document.addEventListener('keydown', unlock);
+                return () => {
+                    document.removeEventListener('click', unlock);
+                    document.removeEventListener('keydown', unlock);
+                };
+            }, []);
+
+            const playAlertSound = (overrideType) => {
+                const ctx = audioCtxRef.current;
+                if (!ctx || ctx.state === 'suspended') return;
+                const type = overrideType || alertSoundType;
+                const sound = ALERT_SOUNDS[type] || ALERT_SOUNDS.beep;
+                try { sound.play(ctx); } catch(e) { console.warn('playAlertSound failed', e); }
+            };
 
             // --- BROWSER NOTIFICATIONS ---
             // Per-device toggle stored in localStorage. Permission state mirrors Notification.permission.
@@ -695,6 +783,7 @@
                         
                         setChimeEnabled(d.chimeEnabled !== undefined ? d.chimeEnabled : true);
                         setPharmAlertSoundEnabled(d.pharmAlertSoundEnabled !== undefined ? d.pharmAlertSoundEnabled : false);
+                        setAlertSoundType(d.alertSoundType || 'beep');
                         setVoiceGender(d.voiceGender || 'female');
                         setAnimEnabled(d.animEnabled !== undefined ? d.animEnabled : true);
                         setAnimDuration(d.animDuration || 3);
@@ -707,8 +796,7 @@
                             setPharmacyAlertData(d.alertData);
                             setShowPharmAlert(true);
                             if (d.pharmAlertSoundEnabled) {
-                                alertRef.current.currentTime = 0;
-                                alertRef.current.play().catch(e => console.log("Alert sound failed", e));
+                                playAlertSound(d.alertSoundType);
                             }
                             showBrowserNotification(
                                 `Doctor Alert${d.alertData.loc ? ' · ' + d.alertData.loc : ''}`,
@@ -725,8 +813,7 @@
                             setDoctorAlertData(d.alertToDoctor);
                             setShowDoctorAlert(true);
                             if (d.pharmAlertSoundEnabled) {
-                                alertRef.current.currentTime = 0;
-                                alertRef.current.play().catch(e => console.log("Alert sound failed", e));
+                                playAlertSound(d.alertSoundType);
                             }
                             showBrowserNotification(
                                 'Reception Alert',
@@ -948,7 +1035,7 @@
                                 <div className="p-6 overflow-y-auto bg-slate-100 space-y-6">
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div><div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}<div className="ios-item"><span className="ios-label">Show Tickers on TV</span><IOSToggle checked={tickersEnabled} onChange={(val) => { setTickersEnabled(val); updateSettings({tickersEnabled: val}); }} /></div></div></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Pharmacy Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div>{pharmAlertSoundEnabled && (<div className="ios-item-col"><div className="flex justify-between items-center"><span className="ios-label">Sound Type</span><div className="flex gap-2 items-center"><select className="bg-slate-100 font-bold text-blue-600 outline-none rounded-lg px-2 py-1 text-xs" value={alertSoundType} onChange={e => { setAlertSoundType(e.target.value); updateSettings({alertSoundType: e.target.value}); }}>{Object.entries(ALERT_SOUNDS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}</select><button onClick={() => playAlertSound()} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700">Test</button></div></div><div className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">This sound plays on the receiving station (Doctor or Pharmacy) when an alert is sent. Synthesized locally — no network needed.</div></div>)}<div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
                                     <div>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Browser Notifications <span className="text-[10px] text-slate-300 normal-case ml-1">(this device only)</span></h3>
                                         <div className="ios-group">
@@ -1079,7 +1166,7 @@
 
                                     {/* RIGHT COLUMN: Now Calling + Queue Monitor */}
                                     <div className="tv-right-col">
-                                        {/* Now Calling — 40% of right column (flex: 2) */}
+                                        {/* Now Calling — 50% of right column (flex: 1) */}
                                         <div className={`bento-tile now-calling-wrapper ${isBlinking ? 'hero-active' : ''}`}>
                                             {!audioOn && (
                                                 <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md" style={{borderRadius:'2.5rem'}}>
@@ -1091,7 +1178,7 @@
                                             <div className="nc-location">{currentCaller?.loc || 'STANDBY'}</div>
                                         </div>
 
-                                        {/* Queue Monitor — 60% of right column (flex: 3) */}
+                                        {/* Queue Monitor — 50% of right column (flex: 1) */}
                                         <div className="bento-tile monitor-tile monitor-wrapper">
                                             <div className="monitor-header">
                                                 <span>No.</span>
