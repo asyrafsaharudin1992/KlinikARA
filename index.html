@@ -83,6 +83,8 @@
         
         @keyframes flash-red { 0% { background-color: #fee2e2; } 50% { background-color: #ef4444; color:white; } 100% { background-color: #fee2e2; } }
         .alert-flash { animation: flash-red 0.5s ease-in-out 6; }
+        @keyframes flash-blue { 0% { background-color: #dbeafe; } 50% { background-color: #2563eb; color:white; } 100% { background-color: #dbeafe; } }
+        .alert-flash-blue { animation: flash-blue 0.5s ease-in-out 6; }
 
         .badge-call { background: #fee2e2; color: #dc2626; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
         .badge-wait { background: #f1f5f9; color: #64748b; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
@@ -100,6 +102,63 @@
         .stat-container { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
         .stat-square { flex: 1; height: 120px; border-radius: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.05); color: white; transition: transform 0.2s; }
         .stat-square:hover { transform: translateY(-2px); }
+
+        /* Registration page patient list */
+        .reg-list-tile {
+            background: white;
+            border-radius: 2rem !important;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
+        }
+        .reg-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .reg-list-scroll { flex: 1; overflow-y: auto; padding: 8px; min-height: 0; }
+        .reg-list-row {
+            display: grid;
+            grid-template-columns: 60px 1fr auto auto auto;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            margin-bottom: 6px;
+            background: #ffffff;
+            transition: background 0.15s;
+            border: 1px solid transparent;
+        }
+        .reg-list-row:hover { background: #f8fafc; border-color: #e2e8f0; }
+        .reg-list-row.done { opacity: 0.55; }
+        .reg-list-row .rl-num { font-size: 1.1rem; font-weight: 900; color: #0f172a; }
+        .reg-list-row .rl-name { font-size: 0.85rem; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .reg-list-row .rl-status { font-size: 0.6rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+        .reg-list-row .rl-btn-alert { background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; padding: 6px 10px; border-radius: 10px; cursor: pointer; transition: 0.15s; }
+        .reg-list-row .rl-btn-alert:hover { background: #2563eb; color: white; }
+        .reg-list-row .rl-btn-del { color: #cbd5e1; padding: 6px 8px; cursor: pointer; font-weight: 800; border: none; background: transparent; }
+        .reg-list-row .rl-btn-del:hover { color: #ef4444; }
+        .reg-list-empty { padding: 30px 20px; text-align: center; color: #94a3b8; font-size: 0.85rem; font-weight: 600; }
+
+        /* Compact notice board for reg view (sits beside patient list horizontally) */
+        .reg-bottom-row {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+        }
+        @media (max-width: 1000px) {
+            .reg-bottom-row { grid-template-columns: 1fr; grid-template-rows: 1fr minmax(140px, auto); }
+        }
 
         /* ADMIN UTILS */
         .admin-layout { display: grid; grid-template-columns: 1fr; height: 100%; gap: 24px; padding: 24px; background: #f1f5f9; }
@@ -489,6 +548,14 @@
             const [showPharmAlert, setShowPharmAlert] = React.useState(false);
             const [lastAlertRef] = React.useState({current: Date.now()});
 
+            // Reception → Doctor alert (mirror of Doctor → Pharmacy)
+            const [doctorAlertData, setDoctorAlertData] = React.useState({ msg: '', patientNum: '' });
+            const [showDoctorAlert, setShowDoctorAlert] = React.useState(false);
+            const [lastDoctorAlertRef] = React.useState({current: Date.now()});
+            const [isRegAlertOpen, setIsRegAlertOpen] = React.useState(false);
+            const [regCustomMsg, setRegCustomMsg] = React.useState('');
+            const [regAlertPatientNum, setRegAlertPatientNum] = React.useState('');
+
             const [isDocAlertOpen, setIsDocAlertOpen] = React.useState(false);
             const [docCustomMsg, setDocCustomMsg] = React.useState('');
             const [alertPatientNum, setAlertPatientNum] = React.useState('');
@@ -510,12 +577,108 @@
             const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
             const alertRef = React.useRef(new Audio('https://www.soundjay.com/buttons/beep-01a.mp3')); 
 
+            // --- BROWSER NOTIFICATIONS ---
+            // Per-device toggle stored in localStorage. Permission state mirrors Notification.permission.
+            const [notifEnabled, setNotifEnabled] = React.useState(localStorage.getItem('notif_enabled') === 'true');
+            const [notifPermission, setNotifPermission] = React.useState(
+                typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+            );
+
+            // Queue diff tracking — used to detect new patients and status changes
+            const prevQueueRef = React.useRef([]);
+            const hasInitializedQueueRef = React.useRef(false);
+
+            const requestNotificationPermission = async () => {
+                if (!('Notification' in window)) {
+                    alert('This browser does not support notifications.');
+                    return;
+                }
+                try {
+                    const result = await Notification.requestPermission();
+                    setNotifPermission(result);
+                    if (result === 'granted') {
+                        new Notification('AraQue Notifications Enabled', {
+                            body: 'You will now receive alerts for new patients and dispensary updates.',
+                            tag: 'araque-welcome'
+                        });
+                        setNotifEnabled(true);
+                        localStorage.setItem('notif_enabled', 'true');
+                    }
+                } catch (e) { console.warn('Permission request failed', e); }
+            };
+
+            const showBrowserNotification = (title, body, tag) => {
+                if (!('Notification' in window)) return;
+                if (Notification.permission !== 'granted') return;
+                if (!notifEnabled) return;
+                try {
+                    const n = new Notification(title, {
+                        body: body || '',
+                        tag: tag || 'araque',
+                        // Re-firing same tag replaces previous notification — keeps tray tidy
+                        renotify: true,
+                        requireInteraction: false
+                    });
+                    // Auto-close after 8s in case OS doesn't
+                    setTimeout(() => { try { n.close(); } catch(e){} }, 8000);
+                    // Focus this tab when clicked
+                    n.onclick = () => { window.focus(); n.close(); };
+                } catch (e) { console.warn('Notification failed', e); }
+            };
+
             React.useEffect(() => {
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
-                
+
+                // Reset diff state when re-subscribing (branch or view changed) so we don't fire
+                // notifications for the entire existing queue on first snapshot.
+                hasInitializedQueueRef.current = false;
+                prevQueueRef.current = [];
+
                 const unsubQ = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => {
-                    setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    const newQueue = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                    if (hasInitializedQueueRef.current) {
+                        const prevQueue = prevQueueRef.current;
+                        const prevIds = new Set(prevQueue.map(p => p.id));
+                        const prevById = new Map(prevQueue.map(p => [p.id, p]));
+
+                        // [1] NEW PATIENT ADDED → notify doctor view
+                        if (view === 'doc') {
+                            const justAdded = newQueue.filter(p =>
+                                !prevIds.has(p.id) &&
+                                p.status === 'waiting' &&
+                                Date.now() - (p.time || 0) < 30000  // ignore stale entries
+                            );
+                            justAdded.forEach(p => {
+                                showBrowserNotification(
+                                    `New Patient · #${p.num}`,
+                                    `${p.name || 'Unnamed'} has been added to the queue.`,
+                                    `new-patient-${p.id}`
+                                );
+                            });
+                        }
+
+                        // [2] PATIENT SENT TO DISPENSARY → notify pharmacy view
+                        if (view === 'pharmacy') {
+                            const sentToPharm = newQueue.filter(p => {
+                                const prev = prevById.get(p.id);
+                                return prev && prev.status !== 'collecting' && p.status === 'collecting';
+                            });
+                            sentToPharm.forEach(p => {
+                                showBrowserNotification(
+                                    `Patient #${p.num} → Dispensary`,
+                                    p.remarks ? `Note: ${p.remarks}` : `${p.name || 'Patient'} ready for dispensing.`,
+                                    `to-pharm-${p.id}`
+                                );
+                            });
+                        }
+                    } else {
+                        hasInitializedQueueRef.current = true;
+                    }
+
+                    prevQueueRef.current = newQueue;
+                    setQueue(newQueue);
                     setIsConnected(true);
                 }, (err) => setIsConnected(false));
                 
@@ -537,6 +700,7 @@
                         setAnimDuration(d.animDuration || 3);
                         setSlideDuration(d.slideDuration || 6);
                         
+                        // Doctor → Pharmacy alert (existing)
                         const serverTrigger = d.alertData?.trigger || 0;
                         if (serverTrigger > lastAlertRef.current && view === 'pharmacy') {
                             lastAlertRef.current = serverTrigger;
@@ -546,7 +710,30 @@
                                 alertRef.current.currentTime = 0;
                                 alertRef.current.play().catch(e => console.log("Alert sound failed", e));
                             }
+                            showBrowserNotification(
+                                `Doctor Alert${d.alertData.loc ? ' · ' + d.alertData.loc : ''}`,
+                                d.alertData.msg || 'Doctor needs your attention.',
+                                'doctor-alert'
+                            );
                             setTimeout(() => setShowPharmAlert(false), 4000);
+                        }
+
+                        // Reception → Doctor alert (new)
+                        const docTrigger = d.alertToDoctor?.trigger || 0;
+                        if (docTrigger > lastDoctorAlertRef.current && view === 'doc') {
+                            lastDoctorAlertRef.current = docTrigger;
+                            setDoctorAlertData(d.alertToDoctor);
+                            setShowDoctorAlert(true);
+                            if (d.pharmAlertSoundEnabled) {
+                                alertRef.current.currentTime = 0;
+                                alertRef.current.play().catch(e => console.log("Alert sound failed", e));
+                            }
+                            showBrowserNotification(
+                                'Reception Alert',
+                                d.alertToDoctor.msg || 'New patient at reception.',
+                                'reception-alert'
+                            );
+                            setTimeout(() => setShowDoctorAlert(false), 4000);
                         }
                     } else {
                         setRooms(['Room 1', 'Room 2', 'Room 3']);
@@ -678,6 +865,13 @@
                 setDocCustomMsg(''); setAlertPatientNum(''); setIsDocAlertOpen(false);
             };
 
+            const sendDoctorAlert = (msg) => {
+                let finalMsg = msg || regCustomMsg || "Please attend new patient";
+                if (regAlertPatientNum) finalMsg = `[Pt #${regAlertPatientNum}] ${finalMsg}`;
+                updateSettings({ alertToDoctor: { trigger: Date.now(), msg: finalMsg, patientNum: regAlertPatientNum || '' } });
+                setRegCustomMsg(''); setRegAlertPatientNum(''); setIsRegAlertOpen(false);
+            };
+
             const handlePrint = (num) => {
                 const now = new Date().toLocaleString('en-GB'); 
                 const iframe = document.createElement('iframe'); iframe.style.display = 'none'; document.body.appendChild(iframe);
@@ -734,6 +928,19 @@
                         </div>
                     )}
 
+                    {isRegAlertOpen && (
+                        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 relative">
+                                <button onClick={() => setIsRegAlertOpen(false)} className="absolute top-4 right-4 text-slate-400 font-bold hover:text-black">&times;</button>
+                                <div className="text-center mb-4"><div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mb-2"><i className="ri-notification-3-fill text-xl"></i></div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Alert Doctor</h2></div>
+                                <div className="mb-4"><label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Regarding Patient</label><select value={regAlertPatientNum} onChange={e => setRegAlertPatientNum(e.target.value)} className="w-full bg-slate-100 p-3 rounded-xl font-bold text-slate-700 outline-none border-2 border-transparent focus:border-blue-500"><option value="">-- General / No Specific Patient --</option>{queue.filter(p => p.status === 'waiting' || p.status === 'calling').map(p => (<option key={p.id} value={p.num}>#{p.num} - {p.name}</option>))}</select></div>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Quick Alert</label>
+                                <div className="alert-grid"><button onClick={() => sendDoctorAlert("New Patient Registered")} className="alert-btn">New Patient</button><button onClick={() => sendDoctorAlert("Patient Waiting Long")} className="alert-btn">Long Wait</button><button onClick={() => sendDoctorAlert("VIP Patient")} className="alert-btn">VIP</button><button onClick={() => sendDoctorAlert("Urgent — Please See")} className="alert-btn bg-red-600 text-white border-red-600 hover:bg-red-700">Urgent</button></div>
+                                <div className="flex gap-2 mt-4"><input value={regCustomMsg} onChange={e => setRegCustomMsg(e.target.value)} placeholder="Or type custom message..." className="flex-1 bg-slate-50 border p-3 rounded-xl text-sm font-semibold outline-none focus:border-blue-500" /><button onClick={() => sendDoctorAlert(null)} className="bg-blue-600 text-white px-4 rounded-xl font-bold"><i className="ri-send-plane-fill"></i></button></div>
+                            </div>
+                        </div>
+                    )}
+
                     {isSettingsOpen && (
                         <div className="fixed inset-0 bg-black/40 z-[200] flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity">
                             <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -742,6 +949,51 @@
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div><div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}<div className="ios-item"><span className="ios-label">Show Tickers on TV</span><IOSToggle checked={tickersEnabled} onChange={(val) => { setTickersEnabled(val); updateSettings({tickersEnabled: val}); }} /></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Pharmacy Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Browser Notifications <span className="text-[10px] text-slate-300 normal-case ml-1">(this device only)</span></h3>
+                                        <div className="ios-group">
+                                            <div className="ios-item">
+                                                <span className="ios-label">Permission Status</span>
+                                                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${
+                                                    notifPermission === 'granted' ? 'bg-green-100 text-green-700' :
+                                                    notifPermission === 'denied' ? 'bg-red-100 text-red-700' :
+                                                    notifPermission === 'unsupported' ? 'bg-slate-200 text-slate-500' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                                }`}>{notifPermission}</span>
+                                            </div>
+                                            {notifPermission === 'default' && (
+                                                <div className="ios-item-col">
+                                                    <button onClick={requestNotificationPermission} className="bg-blue-600 text-white py-2.5 rounded-xl font-bold text-sm uppercase tracking-wider">Enable Notifications</button>
+                                                    <div className="text-[11px] text-slate-500 mt-2 leading-snug">Click to allow this device to show desktop alerts when patients are added or sent to the dispensary.</div>
+                                                </div>
+                                            )}
+                                            {notifPermission === 'denied' && (
+                                                <div className="ios-item-col">
+                                                    <div className="text-[11px] text-red-600 font-medium leading-snug">Notifications are blocked. To re-enable: click the lock/info icon next to the URL in Chrome → Site Settings → Notifications → Allow. Then reload this page.</div>
+                                                </div>
+                                            )}
+                                            {notifPermission === 'granted' && (
+                                                <React.Fragment>
+                                                    <div className="ios-item">
+                                                        <span className="ios-label">Receive Notifications</span>
+                                                        <IOSToggle checked={notifEnabled} onChange={(val) => { setNotifEnabled(val); localStorage.setItem('notif_enabled', val ? 'true' : 'false'); }} />
+                                                    </div>
+                                                    <div className="ios-item-col">
+                                                        <div className="text-[11px] text-slate-500 leading-snug">
+                                                            <span className="font-bold text-slate-700">Doctor view</span> receives alerts when a new patient is registered.<br />
+                                                            <span className="font-bold text-slate-700">Pharmacy view</span> receives alerts when a patient is sent to the dispensary.
+                                                        </div>
+                                                        <button onClick={() => showBrowserNotification('Test Notification', 'If you can see this, notifications are working on this device.', 'araque-test')} className="mt-3 bg-slate-200 text-slate-700 py-2 rounded-xl font-bold text-xs uppercase tracking-wider">Send Test Notification</button>
+                                                    </div>
+                                                </React.Fragment>
+                                            )}
+                                            {notifPermission === 'unsupported' && (
+                                                <div className="ios-item-col">
+                                                    <div className="text-[11px] text-slate-500 leading-snug">This browser does not support web notifications. Use Chrome, Edge, Firefox, or Safari on a desktop/laptop.</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3><div className="ios-group"><div className="ios-item-col"><div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div><div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3><div className="ios-group"><div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div><div className="ios-item-col"><span className="ios-label text-red-600">Top Ticker</span><textarea className="ios-textarea" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div></div></div>
                                     <div>
@@ -806,6 +1058,7 @@
                         ) : (
                             <div className="flex gap-1 items-center">
                                 {view === 'doc' && (<button onClick={() => setIsDocAlertOpen(true)} className="mr-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition p-2 rounded-full shadow-sm" title="Alert Pharmacy"><i className="ri-notification-3-fill text-xl"></i></button>)}
+                                {view === 'reg' && (<button onClick={() => setIsRegAlertOpen(true)} className="mr-4 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition p-2 rounded-full shadow-sm" title="Alert Doctor"><i className="ri-notification-3-fill text-xl"></i></button>)}
                                 {['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}
                                 <button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl hover:bg-slate-100 rounded-full transition">⚙️</button>
                             </div>
@@ -814,6 +1067,7 @@
 
                     <div className="content-area">
                         {view === 'pharmacy' && showPharmAlert && (<div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-4 z-50 shadow-xl alert-flash flex flex-col justify-center items-center"><div className="flex items-center gap-2 font-black text-xl"><i className="ri-alarm-warning-fill"></i> ALERT: {pharmacyAlertData.loc.toUpperCase()}</div><div className="font-bold text-sm bg-red-700 px-4 py-1 rounded-full mt-1">{pharmacyAlertData.msg}</div><button onClick={() => setShowPharmAlert(false)} className="mt-2 text-[10px] font-bold opacity-80 border border-white/50 px-2 rounded hover:bg-white/20">DISMISS</button></div>)}
+                        {view === 'doc' && showDoctorAlert && (<div className="absolute top-0 left-0 w-full bg-blue-600 text-white text-center py-4 z-50 shadow-xl alert-flash-blue flex flex-col justify-center items-center"><div className="flex items-center gap-2 font-black text-xl"><i className="ri-alarm-warning-fill"></i> RECEPTION ALERT</div><div className="font-bold text-sm bg-blue-800 px-4 py-1 rounded-full mt-1">{doctorAlertData.msg}</div><button onClick={() => setShowDoctorAlert(false)} className="mt-2 text-[10px] font-bold opacity-80 border border-white/50 px-2 rounded hover:bg-white/20">DISMISS</button></div>)}
 
                         {view === 'tv' ? (
                             <div className="tv-screen">
@@ -871,16 +1125,55 @@
                         ) : view === 'reg' ? (
                             <div className="reg-layout">
                                 <div className="bento-tile bg-blue-600 p-8 shadow-2xl flex flex-col justify-center gap-6"><h1 className="text-2xl font-black text-white uppercase tracking-tighter text-center">New Registration</h1><input className="reg-uniform-box reg-input-style" placeholder="Patient Name" value={inputName} onChange={e => setInputName(e.target.value.toUpperCase())} /><input className="reg-uniform-box reg-input-style" type="number" placeholder="Queue Number" value={inputNum} onChange={e => setInputNum(e.target.value)} /><button className="reg-uniform-box reg-btn-primary" onClick={() => {if(!inputNum) return; db.collection("branches").doc(branch).collection("queue").add({num: inputNum, name: inputName, status: 'waiting', loc:'Waiting Area', time: Date.now()}); setLastTicket(inputNum); setInputNum(''); setInputName('')}}>Register</button><button className="reg-uniform-box reg-btn-secondary" onClick={() => handlePrint(lastTicket)}>Reprint Ticket</button></div>
-                                <div className="flex flex-col gap-4 h-full">
+                                <div className="flex flex-col gap-4 h-full min-h-0">
                                     <div className="stat-container">
                                         <div className="stat-square bg-blue-500"><span className="text-6xl font-black">{pendingDr}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Dr</span></div>
                                         <div className="stat-square bg-red-500"><span className="text-6xl font-black">{pendingPharm}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Pharm</span></div>
                                         <div className="stat-square bg-green-500"><span className="text-6xl font-black">{totalPatients}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Total</span></div>
                                     </div>
-                                    <div className="bento-tile bg-yellow-100 flex-1 p-6 items-start text-left relative shadow-sm" style={{borderRadius:'2rem'}}>
-                                        <h3 className="font-bold text-yellow-700 mb-2 flex items-center gap-2"><i className="ri-sticky-note-fill"></i> Staff Notice Board</h3>
-                                        <textarea className="w-full h-full bg-transparent resize-none outline-none text-yellow-900 font-medium text-sm" placeholder="Type important notices here (e.g. Break times, VIPs)..." value={clinicNote} onChange={(e) => setClinicNote(e.target.value)} onBlur={saveNote}></textarea>
-                                        <div className="absolute bottom-4 right-4 text-[10px] text-yellow-600 font-bold uppercase opacity-50">Auto-saves</div>
+
+                                    <div className="reg-bottom-row">
+                                        <div className="reg-list-tile">
+                                            <div className="reg-list-header">
+                                                <div className="font-black text-xs uppercase tracking-widest text-slate-600">Queue · {queue.length} {queue.length === 1 ? 'patient' : 'patients'}</div>
+                                                <button onClick={() => setIsRegAlertOpen(true)} className="bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1" title="Send general alert to doctor"><i className="ri-notification-3-fill"></i> General Alert</button>
+                                            </div>
+                                            <div className="reg-list-scroll monitor-scroll">
+                                                {queue.length === 0 ? (
+                                                    <div className="reg-list-empty">
+                                                        <i className="ri-inbox-line text-3xl block mb-2 opacity-50"></i>
+                                                        No patients in queue yet
+                                                    </div>
+                                                ) : queue.map(p => (
+                                                    <div key={p.id} className={`reg-list-row ${p.status === 'finished' ? 'done' : ''}`}>
+                                                        <span className="rl-num">#{p.num}</span>
+                                                        <span className="rl-name">{p.name || '---'}</span>
+                                                        <span className={`rl-status ${
+                                                            p.status === 'calling' ? 'bg-red-100 text-red-600' :
+                                                            p.status === 'collecting' ? 'bg-yellow-100 text-yellow-700' :
+                                                            p.status === 'finished' ? 'bg-slate-200 text-slate-500' :
+                                                            'bg-slate-100 text-slate-500'
+                                                        }`}>{p.status === 'waiting' ? 'WAIT' : p.status.toUpperCase()}</span>
+                                                        <button
+                                                            onClick={() => { setRegAlertPatientNum(p.num); setIsRegAlertOpen(true); }}
+                                                            className="rl-btn-alert"
+                                                            title={`Alert doctor about #${p.num}`}
+                                                        ><i className="ri-notification-3-fill"></i></button>
+                                                        <button
+                                                            onClick={() => { if(confirm(`Delete patient #${p.num}?`)) db.collection("branches").doc(branch).collection("queue").doc(p.id).delete(); }}
+                                                            className="rl-btn-del"
+                                                            title="Delete"
+                                                        >×</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="bento-tile bg-yellow-100 p-4 items-start text-left relative shadow-sm overflow-hidden" style={{borderRadius:'1.5rem'}}>
+                                            <h3 className="font-bold text-yellow-700 mb-1 flex items-center gap-2 text-sm flex-shrink-0"><i className="ri-sticky-note-fill"></i> Staff Notice Board</h3>
+                                            <textarea className="w-full flex-1 min-h-0 bg-transparent resize-none outline-none text-yellow-900 font-medium text-xs" placeholder="Type important notices here (e.g. Break times, VIPs)..." value={clinicNote} onChange={(e) => setClinicNote(e.target.value)} onBlur={saveNote}></textarea>
+                                            <div className="absolute bottom-2 right-3 text-[9px] text-yellow-600 font-bold uppercase opacity-50">Auto-saves</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -899,7 +1192,7 @@
                                                 {view === 'doc' && (<div className="flex-shrink-0 flex gap-2"><span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border uppercase truncate w-20">{p.loc}</span><span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase w-20 text-center ${p.status==='calling'?'bg-red-100 text-red-600': p.status==='finished'?'bg-slate-200 text-slate-500':'bg-white text-slate-400'}`}>{p.status}</span></div>)}
                                                 {view === 'pharmacy' && (<div className="flex-shrink-0"><textarea defaultValue={p.remarks} onBlur={e => updatePatient(p.id, p.status, p.loc, false, e.target.value)} className="w-64 text-xs p-2 bg-yellow-50 border rounded h-16 resize-none" placeholder="Note..."/></div>)}
                                                 <div className="flex gap-1 flex-shrink-0">
-                                                    {view === 'doc' ? (<>{rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}<button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button></>) : (<><button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button><button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button></>)}
+                                                    {view === 'doc' ? (<>{rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}<button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button><button onClick={() => { setAlertPatientNum(p.num); setIsDocAlertOpen(true); }} className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition px-3 py-2 rounded-lg" title={`Alert Pharmacy about #${p.num}`}><i className="ri-notification-3-fill text-xs"></i></button></>) : (<><button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button><button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button></>)}
                                                     <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 px-2 font-bold hover:text-red-500">✕</button>
                                                 </div>
                                             </div>
