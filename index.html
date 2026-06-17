@@ -7,9 +7,12 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Pinned stable versions to prevent auto-updates from causing the white screen -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.0/babel.min.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -148,7 +151,7 @@
         .reg-list-row .rl-btn-del:hover { color: #ef4444; }
         .reg-list-empty { padding: 30px 20px; text-align: center; color: #94a3b8; font-size: 0.85rem; font-weight: 600; }
 
-        /* Compact notice board for reg view (sits beside patient list horizontally) */
+        /* Compact notice board for reg view */
         .reg-bottom-row {
             display: grid;
             grid-template-columns: 1.4fr 1fr;
@@ -313,7 +316,7 @@
         }
         .slideshow-dot.active { background: rgba(255,255,255,0.95); transform: scale(1.3); }
 
-        /* HEADER DATE/TIME */
+        /* HEADER DATE/TIME — sits at top-right of nav, in line with the AraQue logo (TV view) */
         .nav-datetime {
             display: flex;
             flex-direction: column;
@@ -428,7 +431,11 @@
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
+    <!-- FATAL WHITE SCREEN FIX: Replaced type="text/babel" with the configured presets to stop modern imports -->
+    <script type="text/babel" data-presets="react,env">
+        /* @jsx React.createElement */
+        /* @jsxFrag React.Fragment */
+
         const firebaseConfig = {
             apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
             authDomain: "clinicqueue-d9d3a.firebaseapp.com",
@@ -506,6 +513,7 @@
             return (<div className="flex flex-col items-center justify-center h-full w-full text-white text-center"><div className="text-3xl font-bold uppercase tracking-widest mb-1">{date.toLocaleDateString('en-GB', {weekday:'long'})}</div><div className="text-4xl font-black tracking-tighter leading-none mb-3">{date.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric'})}</div><div className="text-sm font-bold opacity-80 uppercase tracking-wide border-t border-white/30 pt-2 w-2/3">{hijri}</div></div>);
         };
 
+        // HEADER DATE/TIME — sits at top-right of nav on TV view, in line with the AraQue logo
         const HeaderDateTime = () => {
             const [now, setNow] = React.useState(new Date());
             React.useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -588,29 +596,24 @@
 
             const [rooms, setRooms] = React.useState(['Room 1', 'Room 2', 'Room 3']);
             const [ticketHeader, setTicketHeader] = React.useState('KLINIK ARA 24 JAM');
-            const [ticketFooter, setTicketFooter] = React.useState('Moga segala urutan dimudahkan.');
+            const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
             const [clinicNote, setClinicNote] = React.useState('');
             
             const [chimeEnabled, setChimeEnabled] = React.useState(true); 
             const [pharmAlertSoundEnabled, setPharmAlertSoundEnabled] = React.useState(false); 
-            // FIX 7a: Added alertSoundTypeRef to avoid stale closure in Firestore listener
             const [alertSoundType, setAlertSoundType] = React.useState('beep');
-            const alertSoundTypeRef = React.useRef('beep');
             const [voiceGender, setVoiceGender] = React.useState('female');
             const [animEnabled, setAnimEnabled] = React.useState(true);
             const [animDuration, setAnimDuration] = React.useState(3);
 
             const [pharmacyAlertData, setPharmacyAlertData] = React.useState({ msg: '', loc: '' });
             const [showPharmAlert, setShowPharmAlert] = React.useState(false);
-            // FIX 1: Was React.useState({current: Date.now()}) — illegal direct state mutation later.
-            // useRef(Date.now()) is the correct API for a mutable non-reactive timestamp.
-            const lastAlertRef = React.useRef(Date.now());
+            const [lastAlertRef] = React.useState({current: Date.now()});
 
-            // Reception → Doctor alert
+            // Reception → Doctor alert (mirror of Doctor → Pharmacy)
             const [doctorAlertData, setDoctorAlertData] = React.useState({ msg: '', patientNum: '' });
             const [showDoctorAlert, setShowDoctorAlert] = React.useState(false);
-            // FIX 2: Same fix as lastAlertRef above.
-            const lastDoctorAlertRef = React.useRef(Date.now());
+            const [lastDoctorAlertRef] = React.useState({current: Date.now()});
             const [isRegAlertOpen, setIsRegAlertOpen] = React.useState(false);
             const [regCustomMsg, setRegCustomMsg] = React.useState('');
             const [regAlertPatientNum, setRegAlertPatientNum] = React.useState('');
@@ -633,12 +636,12 @@
             const [slideDuration, setSlideDuration] = React.useState(6);
             const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
             
-            // FIX 3: Was React.useRef(new Audio(url)) — new Audio() at component level
-            // fires on every render call and can throw before mount on autoplay-blocked browsers.
-            // Lazy-init in the useEffect that needs it instead.
-            const chimeRef = React.useRef(null);
+            const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
             const audioCtxRef = React.useRef(null);
 
+            // Lazily initialize AudioContext on first interaction so alert sounds work from
+            // any view, not just TV. Chrome starts the context "suspended" until a user gesture
+            // touches the page — clicking anywhere unsuspends it.
             React.useEffect(() => {
                 const unlock = () => {
                     if (!audioCtxRef.current) {
@@ -662,19 +665,19 @@
             const playAlertSound = (overrideType) => {
                 const ctx = audioCtxRef.current;
                 if (!ctx || ctx.state === 'suspended') return;
-                const type = overrideType || alertSoundTypeRef.current;
+                const type = overrideType || alertSoundType;
                 const sound = ALERT_SOUNDS[type] || ALERT_SOUNDS.beep;
                 try { sound.play(ctx); } catch(e) { console.warn('playAlertSound failed', e); }
             };
 
-            // FIX 4a: Added notifEnabledRef — showBrowserNotification is defined once and
-            // captures notifEnabled from the initial closure. The ref stays current always.
+            // --- BROWSER NOTIFICATIONS ---
+            // Per-device toggle stored in localStorage. Permission state mirrors Notification.permission.
             const [notifEnabled, setNotifEnabled] = React.useState(localStorage.getItem('notif_enabled') === 'true');
-            const notifEnabledRef = React.useRef(localStorage.getItem('notif_enabled') === 'true');
             const [notifPermission, setNotifPermission] = React.useState(
                 typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
             );
 
+            // Queue diff tracking — used to detect new patients and status changes
             const prevQueueRef = React.useRef([]);
             const hasInitializedQueueRef = React.useRef(false);
 
@@ -692,8 +695,6 @@
                             tag: 'araque-welcome'
                         });
                         setNotifEnabled(true);
-                        // FIX 4c: Keep ref in sync when permission granted
-                        notifEnabledRef.current = true;
                         localStorage.setItem('notif_enabled', 'true');
                     }
                 } catch (e) { console.warn('Permission request failed', e); }
@@ -702,16 +703,18 @@
             const showBrowserNotification = (title, body, tag) => {
                 if (!('Notification' in window)) return;
                 if (Notification.permission !== 'granted') return;
-                // FIX 4d: Use ref instead of stale closure over notifEnabled state
-                if (!notifEnabledRef.current) return;
+                if (!notifEnabled) return;
                 try {
                     const n = new Notification(title, {
                         body: body || '',
                         tag: tag || 'araque',
+                        // Re-firing same tag replaces previous notification — keeps tray tidy
                         renotify: true,
                         requireInteraction: false
                     });
+                    // Auto-close after 8s in case OS doesn't
                     setTimeout(() => { try { n.close(); } catch(e){} }, 8000);
+                    // Focus this tab when clicked
                     n.onclick = () => { window.focus(); n.close(); };
                 } catch (e) { console.warn('Notification failed', e); }
             };
@@ -720,6 +723,8 @@
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
 
+                // Reset diff state when re-subscribing (branch or view changed) so we don't fire
+                // notifications for the entire existing queue on first snapshot.
                 hasInitializedQueueRef.current = false;
                 prevQueueRef.current = [];
 
@@ -731,11 +736,12 @@
                         const prevIds = new Set(prevQueue.map(p => p.id));
                         const prevById = new Map(prevQueue.map(p => [p.id, p]));
 
+                        // [1] NEW PATIENT ADDED → notify doctor view
                         if (view === 'doc') {
                             const justAdded = newQueue.filter(p =>
                                 !prevIds.has(p.id) &&
                                 p.status === 'waiting' &&
-                                Date.now() - (p.time || 0) < 30000
+                                Date.now() - (p.time || 0) < 30000  // ignore stale entries
                             );
                             justAdded.forEach(p => {
                                 showBrowserNotification(
@@ -746,6 +752,7 @@
                             });
                         }
 
+                        // [2] PATIENT SENT TO DISPENSARY → notify pharmacy view
                         if (view === 'pharmacy') {
                             const sentToPharm = newQueue.filter(p => {
                                 const prev = prevById.get(p.id);
@@ -781,14 +788,13 @@
                         
                         setChimeEnabled(d.chimeEnabled !== undefined ? d.chimeEnabled : true);
                         setPharmAlertSoundEnabled(d.pharmAlertSoundEnabled !== undefined ? d.pharmAlertSoundEnabled : false);
-                        // FIX 7c: Sync ref when Firestore settings update
                         setAlertSoundType(d.alertSoundType || 'beep');
-                        alertSoundTypeRef.current = d.alertSoundType || 'beep';
                         setVoiceGender(d.voiceGender || 'female');
                         setAnimEnabled(d.animEnabled !== undefined ? d.animEnabled : true);
                         setAnimDuration(d.animDuration || 3);
                         setSlideDuration(d.slideDuration || 6);
                         
+                        // Doctor → Pharmacy alert (existing)
                         const serverTrigger = d.alertData?.trigger || 0;
                         if (serverTrigger > lastAlertRef.current && view === 'pharmacy') {
                             lastAlertRef.current = serverTrigger;
@@ -805,6 +811,7 @@
                             setTimeout(() => setShowPharmAlert(false), 4000);
                         }
 
+                        // Reception → Doctor alert (new)
                         const docTrigger = d.alertToDoctor?.trigger || 0;
                         if (docTrigger > lastDoctorAlertRef.current && view === 'doc') {
                             lastDoctorAlertRef.current = docTrigger;
@@ -937,11 +944,7 @@
                                     }, 500);
                                 }
                             };
-                            // FIX 3b: Lazy-init chimeRef before playing
-                            if (!chimeRef.current) {
-                                try { chimeRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); } catch(e) {}
-                            }
-                            if (chimeEnabled && chimeRef.current) { chimeRef.current.play().then(playSequence).catch(e=>{}); } else { playSequence(); }
+                            if (chimeEnabled) { chimeRef.current.play().then(playSequence).catch(e=>{}); } else { playSequence(); }
                         }
                     }
                 }
@@ -1037,12 +1040,7 @@
                                 <div className="p-6 overflow-y-auto bg-slate-100 space-y-6">
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div><div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}<div className="ios-item"><span className="ios-label">Show Tickers on TV</span><IOSToggle checked={tickersEnabled} onChange={(val) => { setTickersEnabled(val); updateSettings({tickersEnabled: val}); }} /></div></div></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div>{pharmAlertSoundEnabled && (<div className="ios-item-col"><div className="flex justify-between items-center"><span className="ios-label">Sound Type</span><div className="flex gap-2 items-center"><select className="bg-slate-100 font-bold text-blue-600 outline-none rounded-lg px-2 py-1 text-xs" value={alertSoundType} onChange={e => {
-                                        // FIX 7b: Keep alertSoundTypeRef in sync on user change
-                                        setAlertSoundType(e.target.value);
-                                        alertSoundTypeRef.current = e.target.value;
-                                        updateSettings({alertSoundType: e.target.value});
-                                    }}>{Object.entries(ALERT_SOUNDS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}</select><button onClick={() => playAlertSound()} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700">Test</button></div></div><div className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">This sound plays on the receiving station (Doctor or Pharmacy) when an alert is sent. Synthesized locally — no network needed.</div></div>)}<div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div>{pharmAlertSoundEnabled && (<div className="ios-item-col"><div className="flex justify-between items-center"><span className="ios-label">Sound Type</span><div className="flex gap-2 items-center"><select className="bg-slate-100 font-bold text-blue-600 outline-none rounded-lg px-2 py-1 text-xs" value={alertSoundType} onChange={e => { setAlertSoundType(e.target.value); updateSettings({alertSoundType: e.target.value}); }}>{Object.entries(ALERT_SOUNDS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}</select><button onClick={() => playAlertSound()} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700">Test</button></div></div><div className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">This sound plays on the receiving station (Doctor or Pharmacy) when an alert is sent. Synthesized locally — no network needed.</div></div>)}<div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
                                     <div>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Browser Notifications <span className="text-[10px] text-slate-300 normal-case ml-1">(this device only)</span></h3>
                                         <div className="ios-group">
@@ -1070,8 +1068,7 @@
                                                 <React.Fragment>
                                                     <div className="ios-item">
                                                         <span className="ios-label">Receive Notifications</span>
-                                                        {/* FIX 4b: Keep notifEnabledRef in sync on toggle */}
-                                                        <IOSToggle checked={notifEnabled} onChange={(val) => { setNotifEnabled(val); notifEnabledRef.current = val; localStorage.setItem('notif_enabled', val ? 'true' : 'false'); }} />
+                                                        <IOSToggle checked={notifEnabled} onChange={(val) => { setNotifEnabled(val); localStorage.setItem('notif_enabled', val ? 'true' : 'false'); }} />
                                                     </div>
                                                     <div className="ios-item-col">
                                                         <div className="text-[11px] text-slate-500 leading-snug">
@@ -1091,6 +1088,7 @@
                                     </div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3><div className="ios-group"><div className="ios-item-col"><div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div><div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3><div className="ios-group"><div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div><div className="ios-item-col"><span className="ios-label text-red-600">Top Ticker</span><textarea className="ios-textarea" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div></div></div>
+                                    
                                     <div>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Slideshow</h3>
                                         <div className="ios-group">
@@ -1125,7 +1123,7 @@
                                                         ))}
                                                     </div>
                                                 )}
-                                                <div className="text-[10px] text-slate-400 font-medium mt-3 leading-snug">Photos are auto-resized &amp; compressed. Best results: landscape JPG/PNG, under 5MB each.</div>
+                                                <div className="text-[10px] text-slate-400 font-medium mt-3 leading-snug">Photos are auto-resized & compressed. Best results: landscape JPG/PNG, under 5MB each.</div>
                                             </div>
                                         </div>
                                     </div>
@@ -1167,12 +1165,10 @@
                         {view === 'tv' ? (
                             <div className="tv-screen">
                                 <div className={`tv-layout-v3 ${tickersEnabled ? 'with-ticker' : ''}`}>
-                                    {/* LEFT: Slideshow */}
                                     <div className="slideshow-tile">
                                         <SlideShow photos={slideshowPhotos} currentSlide={currentSlide} />
                                     </div>
 
-                                    {/* RIGHT COLUMN: Now Calling + Queue Monitor */}
                                     <div className="tv-right-col">
                                         <div className={`bento-tile now-calling-wrapper ${isBlinking ? 'hero-active' : ''}`}>
                                             {!audioOn && (
