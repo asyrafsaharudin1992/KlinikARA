@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AraQue Pro - TV Layout v27.3</title>
+    <title>AraQue Pro - Lite v27.0</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone@7.23.0/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -49,131 +49,42 @@
         .content-area { flex: 1; overflow: hidden; position: relative; }
 
         /* --- TV STYLES --- */
-        .tv-screen-new { 
-            background: white; 
-            height: 100%; width: 100%; 
-            display: grid; 
-            grid-template-rows: 15vh 1fr 10vh; /* Header, Body, Ticker */
-            overflow: hidden;
-            padding: 0;
-        }
+        .tv-screen { background: #0f172a; background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%); height: 100%; width: 100%; display: flex; flex-direction: column; overflow: hidden; }
+        .tv-layout { display: grid; grid-template-columns: 320px 1fr 480px; gap: 24px; padding: 30px; padding-bottom: 30px; height: 100%; overflow: hidden; }
+        .tv-layout.with-ticker { padding-bottom: 140px; }
 
-        .tv-header {
-            display: flex;
-            justify-content: flex-end; 
-            align-items: center;
-            padding: 0 40px;
-        }
-        .tv-clock-group { text-align: right; line-height: 1.1; color: #000; }
-        .tv-time { font-size: 3rem; font-weight: 800; letter-spacing: -0.05em; }
-        .tv-date { font-size: 1.2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-
-        /* BODY LAYOUT */
-        .tv-body {
-            display: grid;
-            grid-template-columns: 35% 65%;
-            gap: 24px;
-            padding: 0 40px 24px 40px;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .tv-col-left {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            height: 100%;
-        }
-
-        /* 1. CALLING BOX (BLUE) - HEIGHT INCREASED */
-        .calling-box {
-            background-color: #0047AB; 
-            color: white;
-            border-radius: 20px;
-            flex: 0 0 60%; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            position: relative;
-        }
-        .lbl-calling { font-size: 1.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0; opacity: 0.9; }
-        .lbl-number { font-size: 10rem; font-weight: 900; line-height: 0.9; margin: 10px 0; letter-spacing: -0.05em; }
-        .lbl-loc { font-size: 2.5rem; font-weight: 800; text-transform: uppercase; }
-
-        /* 2. QUEUE LIST (YELLOW/ORANGE) */
-        .queue-box {
-            background-color: #ffc857; 
-            color: #1e293b;
-            border-radius: 20px;
-            flex: 1; 
-            display: flex;
-            flex-direction: column;
-            padding: 24px;
-            overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        .q-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 1rem;
-            font-weight: 900;
-            color: #000;
-            text-transform: uppercase;
-            padding-bottom: 12px;
-            border-bottom: 2px solid rgba(0,0,0,0.1);
-            margin-bottom: 12px;
-            letter-spacing: 0.05em;
-        }
-        .q-list { flex: 1; overflow-y: auto; }
-        .q-item { display: flex; justify-content: space-between; font-size: 1.8rem; font-weight: 800; color: #000; margin-bottom: 14px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 4px; }
-        .q-item:last-child { border-bottom: none; }
-
-        /* 3. SLIDESHOW (RIGHT) */
-        .slideshow-box {
-            background-color: #0047AB; 
-            width: 100%;
-            height: 100%;
-            border-radius: 0; 
-            overflow: hidden;
-            position: relative;
-        }
-        .slide-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover; 
-            display: block;
-        }
-        .placeholder-text {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            text-align: center;
-        }
-
-        /* 4. TICKER (BOTTOM) */
-        .tv-ticker-area {
-            background: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            border-top: 1px solid #eee;
-        }
-        .ticker-text-lg { font-size: 2.2rem; font-weight: 800; color: #000; white-space: nowrap; animation: marquee 35s linear infinite; padding-left: 100%; }
-
+        .col-left, .col-middle { display: flex; flex-direction: column; gap: 24px; height: 100%; }
+        .col-right { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        
+        .bento-tile { border-radius: 2.5rem !important; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .time-tile { flex: 1; background: #2563eb; color: white; }
+        .date-tile { flex: 1; background: #f97316; color: white; }
+        .hero-tile { height: 100%; width: 100%; background: #f8fafc; color: #1e293b; justify-content: flex-start; padding-top: 8vh; position: relative; border: 1px solid rgba(255,255,255,0.1); }
+        .monitor-tile { height: 100%; justify-content: flex-start; padding: 0; background: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); }
+        
+        .hero-label { font-size: 2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3em; color: #94a3b8; margin-bottom: 2vh; }
+        .huge-number { font-size: 38vh; font-weight: 900; line-height: 0.8; color: #0f172a; letter-spacing: -0.05em; margin: 0; text-shadow: 4px 4px 0px #e2e8f0; }
+        .huge-location { font-size: 4rem; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: -0.02em; text-align: center; line-height: 1.1; margin-top: 6vh; padding: 0 20px; }
+        .tile-label-white { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.8); margin-bottom: 5px; }
+        
+        .monitor-header { width: 100%; display: grid; grid-template-columns: 0.8fr 1.5fr 1fr; padding: 20px; background: #e2e8f0; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; text-align: center; border-bottom: 2px solid #cbd5e1; flex-shrink: 0; }
+        .monitor-scroll { width: 100%; flex: 1; overflow-y: auto; padding: 15px; }
+        .monitor-item { display: grid; grid-template-columns: 0.8fr 1.5fr 1fr; background: white; margin-bottom: 10px; padding: 18px 10px; border-radius: 1.5rem !important; align-items: center; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        .ticker-container { position: absolute; bottom: 0; left: 0; width: 100%; z-index: 100; display: flex; flex-direction: column; }
+        .ticker-layer-2 { width: 100%; height: 50px; display: flex; align-items: center; font-size: 1.4rem; font-weight: 700; overflow: hidden; }
+        .ticker-layer-1 { width: 100%; height: 60px; display: flex; align-items: center; font-size: 1.8rem; font-weight: 800; overflow: hidden; }
+        .ticker-move-fast { white-space: nowrap; animation: marquee 25s linear infinite; display: inline-block; padding-left: 100%; }
+        .ticker-move-slow { white-space: nowrap; animation: marquee 45s linear infinite; display: inline-block; padding-left: 100%; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
         
-        @keyframes pulse-active { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        .blink-anim { animation: pulse-active 0.8s ease-in-out infinite; }
+        @keyframes pulse-active { 0% { background-color: #f8fafc; } 50% { background-color: #e2e8f0; } }
+        .hero-active { animation: pulse-active 0.8s ease-in-out infinite; }
         
         @keyframes flash-red { 0% { background-color: #fee2e2; } 50% { background-color: #ef4444; color:white; } 100% { background-color: #fee2e2; } }
         .alert-flash { animation: flash-red 0.5s ease-in-out 6; }
+        @keyframes flash-blue { 0% { background-color: #dbeafe; } 50% { background-color: #2563eb; color:white; } 100% { background-color: #dbeafe; } }
+        .alert-flash-blue { animation: flash-blue 0.5s ease-in-out 6; }
 
         .badge-call { background: #fee2e2; color: #dc2626; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
         .badge-wait { background: #f1f5f9; color: #64748b; border-radius: 8px !important; padding: 4px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
@@ -192,6 +103,63 @@
         .stat-square { flex: 1; height: 120px; border-radius: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.05); color: white; transition: transform 0.2s; }
         .stat-square:hover { transform: translateY(-2px); }
 
+        /* Registration page patient list */
+        .reg-list-tile {
+            background: white;
+            border-radius: 2rem !important;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
+        }
+        .reg-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .reg-list-scroll { flex: 1; overflow-y: auto; padding: 8px; min-height: 0; }
+        .reg-list-row {
+            display: grid;
+            grid-template-columns: 60px 1fr auto auto auto;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            margin-bottom: 6px;
+            background: #ffffff;
+            transition: background 0.15s;
+            border: 1px solid transparent;
+        }
+        .reg-list-row:hover { background: #f8fafc; border-color: #e2e8f0; }
+        .reg-list-row.done { opacity: 0.55; }
+        .reg-list-row .rl-num { font-size: 1.1rem; font-weight: 900; color: #0f172a; }
+        .reg-list-row .rl-name { font-size: 0.85rem; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .reg-list-row .rl-status { font-size: 0.6rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+        .reg-list-row .rl-btn-alert { background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; padding: 6px 10px; border-radius: 10px; cursor: pointer; transition: 0.15s; }
+        .reg-list-row .rl-btn-alert:hover { background: #2563eb; color: white; }
+        .reg-list-row .rl-btn-del { color: #cbd5e1; padding: 6px 8px; cursor: pointer; font-weight: 800; border: none; background: transparent; }
+        .reg-list-row .rl-btn-del:hover { color: #ef4444; }
+        .reg-list-empty { padding: 30px 20px; text-align: center; color: #94a3b8; font-size: 0.85rem; font-weight: 600; }
+
+        /* Compact notice board for reg view (sits beside patient list horizontally) */
+        .reg-bottom-row {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+        }
+        @media (max-width: 1000px) {
+            .reg-bottom-row { grid-template-columns: 1fr; grid-template-rows: 1fr minmax(140px, auto); }
+        }
+
         /* ADMIN UTILS */
         .admin-layout { display: grid; grid-template-columns: 1fr; height: 100%; gap: 24px; padding: 24px; background: #f1f5f9; }
         .admin-panel { background: white; border-radius: 2rem !important; overflow: hidden; border: 1px solid #cbd5e1; }
@@ -209,15 +177,258 @@
         .alert-btn:hover { background: #fecaca; }
         .alert-btn:active { transform: scale(0.95); }
 
+        /* --- NEW TV LAYOUT V3 --- */
+        .tv-layout-v3 {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(380px, 28%);
+            gap: 20px;
+            padding: 24px;
+            height: 100%;
+            overflow: hidden;
+        }
+        .tv-layout-v3.with-ticker { padding-bottom: 130px; }
+
+        /* RIGHT COLUMN: now calling + queue monitor */
+        .tv-right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+            min-height: 0;
+        }
+
+        /* Now Calling — 50% of right column */
+        .now-calling-wrapper {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            background: #f8fafc;
+            color: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: clamp(16px, 3vh, 32px) 12px;
+        }
+
+        /* Queue Monitor — 50% of right column */
+        .monitor-wrapper {
+            flex: 1;
+            min-height: 0;
+            height: auto !important;
+        }
+
+        .nc-label {
+            font-size: clamp(0.8rem, 1.8vh, 1.25rem);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.35em;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+        .nc-number {
+            font-size: clamp(5rem, 26vh, 16rem);
+            font-weight: 900;
+            line-height: 0.85;
+            color: #0f172a;
+            letter-spacing: -0.06em;
+            text-shadow: 5px 5px 0px #e2e8f0;
+            margin: 6px 0 10px;
+        }
+        .nc-location {
+            font-size: clamp(1.1rem, 2.8vh, 2.2rem);
+            font-weight: 800;
+            color: #1d4ed8;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            text-align: center;
+            line-height: 1;
+            margin-top: clamp(8px, 1.5vh, 18px);
+            padding: clamp(8px, 1.4vh, 14px) clamp(20px, 3vw, 36px);
+            background: #dbeafe;
+            border: 1px solid rgba(37, 99, 235, 0.18);
+            border-radius: 999px;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.18);
+            display: inline-block;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            align-self: center;
+        }
+
+        /* SLIDESHOW TILE */
+        .slideshow-tile {
+            border-radius: 2.5rem !important;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+            background: #0f172a;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+            min-width: 0;
+            width: 100%;
+            height: 100%;
+            border: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slideshow-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 1.2s ease-in-out;
+            pointer-events: none;
+        }
+        .slideshow-img.active { opacity: 1; }
+        .slideshow-empty {
+            color: rgba(255,255,255,0.5);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            text-align: center;
+            padding: 20px;
+            z-index: 2;
+        }
+        .slideshow-empty .icon { font-size: clamp(2.5rem, 8vh, 5rem); display: block; opacity: 0.5; margin-bottom: 12px; }
+        .slideshow-empty .title { font-size: clamp(1rem, 2.2vh, 1.6rem); }
+        .slideshow-empty .hint { font-size: clamp(0.65rem, 1.2vh, 0.9rem); opacity: 0.7; margin-top: 8px; letter-spacing: 0.18em; }
+
+        .slideshow-dots {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 5;
+        }
+        .slideshow-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            transition: background 0.3s, transform 0.3s;
+        }
+        .slideshow-dot.active { background: rgba(255,255,255,0.95); transform: scale(1.3); }
+
+        /* HEADER DATE/TIME */
+        .nav-datetime {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .nav-dt-row {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+        .nav-day {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .nav-date {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+        .nav-time {
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: #2563eb;
+            letter-spacing: -0.02em;
+            min-width: 95px;
+            text-align: right;
+        }
+        .nav-sep {
+            color: #cbd5e1;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .nav-hijri {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* Photo grid in settings */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .photo-thumb {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #e5e5ea;
+        }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-delete {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(220, 38, 38, 0.95);
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .upload-btn {
+            background: #007aff;
+            color: white;
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        @media (max-width: 1100px) {
+            .tv-layout-v3 {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr minmax(260px, 38%);
+            }
+        }
+        @media (max-width: 700px) {
+            .global-nav { padding: 0 16px; }
+            .nav-day, .nav-sep { display: none; }
+            .nav-time { font-size: 1.15rem; min-width: 0; }
+            .nav-date { font-size: 0.85rem; }
+            .nav-hijri { display: none; }
+        }
+
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel" data-presets="react,env">
-        /* @jsx React.createElement */
-        /* @jsxFrag React.Fragment */
-
+    <script type="text/babel">
         const firebaseConfig = {
             apiKey: "AIzaSyCDxci4g-9QFvo_6ymov1mxdvn7Jf_mhvg",
             authDomain: "clinicqueue-d9d3a.firebaseapp.com",
@@ -230,40 +441,113 @@
         try { if (!firebase.apps.length) firebase.initializeApp(firebaseConfig); } catch(e){ console.error(e); }
         const db = firebase.firestore();
 
-        // COMPONENTS
-        const LiveClock = () => {
-            const [time, setTime] = React.useState(new Date());
-            React.useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
-            return (
-                <div className="tv-clock-group">
-                    <div className="tv-time">{time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div>
-                </div>
-            );
+        // --- ALERT SOUND PRESETS (Web Audio synthesis — no network, works on Tizen) ---
+        const ALERT_SOUNDS = {
+            beep:      { label: 'Beep',                play: (ctx) => synthTone(ctx, [{ f: 880,  d: 0.25, type: 'square' }]) },
+            doubleBeep:{ label: 'Double Beep',         play: (ctx) => synthTone(ctx, [{ f: 880, s: 0,    d: 0.15, type: 'square' }, { f: 880, s: 0.2, d: 0.15, type: 'square' }]) },
+            tripleBeep:{ label: 'Triple Beep (Urgent)',play: (ctx) => synthTone(ctx, [{ f: 1000,s: 0,    d: 0.12 }, { f: 1000, s: 0.18, d: 0.12 }, { f: 1000, s: 0.36, d: 0.12 }], 'square') },
+            ding:      { label: 'Ding (High)',         play: (ctx) => synthTone(ctx, [{ f: 1320, d: 0.7,  type: 'sine' }]) },
+            chime:     { label: 'Chime (Ding-Dong)',   play: (ctx) => synthTone(ctx, [{ f: 880, s: 0,    d: 0.4,  type: 'sine' }, { f: 660, s: 0.32, d: 0.55, type: 'sine' }]) },
+            notify:    { label: 'Notification (Rising)',play: (ctx) => synthTone(ctx, [{ f: 660, s: 0,    d: 0.15, type: 'sine' }, { f: 880, s: 0.12, d: 0.4,  type: 'sine' }]) },
+            softBell:  { label: 'Soft Bell',           play: (ctx) => synthBell(ctx) }
         };
 
-        const LiveDate = () => {
+        function synthTone(ctx, notes, defaultType) {
+            notes.forEach(n => {
+                try {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = n.type || defaultType || 'sine';
+                    o.frequency.value = n.f;
+                    const start = ctx.currentTime + (n.s || 0);
+                    g.gain.setValueAtTime(0.0001, start);
+                    g.gain.linearRampToValueAtTime(0.35, start + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.001, start + n.d);
+                    o.start(start);
+                    o.stop(start + n.d);
+                } catch(e) { console.warn('Tone synth failed', e); }
+            });
+        }
+
+        function synthBell(ctx) {
+            try {
+                [{ f: 880, vol: 0.3 }, { f: 1108, vol: 0.18 }].forEach(part => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sine';
+                    o.frequency.value = part.f;
+                    const t = ctx.currentTime;
+                    g.gain.setValueAtTime(0.0001, t);
+                    g.gain.linearRampToValueAtTime(part.vol, t + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+                    o.start(t);
+                    o.stop(t + 1.5);
+                });
+            } catch(e) { console.warn('Bell synth failed', e); }
+        }
+
+        const LiveClock = ({ compact = false }) => {
+            const [time, setTime] = React.useState(new Date());
+            React.useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
+            if (compact) {
+                return (<div className="flex flex-col items-center justify-center h-full w-full"><span className="tile-label-white">Current Time</span><div className="clock-text">{time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div></div>);
+            }
+            return (<div className="flex flex-col items-center justify-center h-full w-full"><span className="tile-label-white">Current Time</span><div className="text-5xl font-black text-white tracking-tighter leading-none">{time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</div></div>);
+        };
+
+        const LiveDate = ({ compact = false }) => {
             const [date, setDate] = React.useState(new Date());
-            let hijri = ""; try { hijri = new Intl.DateTimeFormat('en-GB-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(date); } catch (e) { hijri = ""; }
-            return (
-                <div className="tv-clock-group">
-                    <div className="tv-date">{date.toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'})}</div>
-                </div>
-            );
+            let hijri = ""; try { hijri = new Intl.DateTimeFormat('en-GB-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(date); } catch (e) { hijri = date.toLocaleDateString(); }
+            if (compact) {
+                return (<div className="flex flex-col items-center justify-center h-full w-full text-white text-center"><div className="date-weekday">{date.toLocaleDateString('en-GB', {weekday:'long'})}</div><div className="date-main">{date.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric'})}</div><div className="date-hijri">{hijri}</div></div>);
+            }
+            return (<div className="flex flex-col items-center justify-center h-full w-full text-white text-center"><div className="text-3xl font-bold uppercase tracking-widest mb-1">{date.toLocaleDateString('en-GB', {weekday:'long'})}</div><div className="text-4xl font-black tracking-tighter leading-none mb-3">{date.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric'})}</div><div className="text-sm font-bold opacity-80 uppercase tracking-wide border-t border-white/30 pt-2 w-2/3">{hijri}</div></div>);
         };
 
         const HeaderDateTime = () => {
             const [now, setNow] = React.useState(new Date());
             React.useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+            let hijri = "";
+            try { hijri = new Intl.DateTimeFormat('en-GB-u-ca-islamic', {day:'numeric', month:'short', year:'numeric'}).format(now); } catch(e) { hijri = ""; }
             return (
-                <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', lineHeight:'1.1'}}>
-                    <div style={{display:'flex', alignItems:'baseline', gap:'12px'}}>
-                        <span style={{fontSize:'0.85rem', fontWeight:'700', color:'#475569', textTransform:'uppercase'}}>{now.toLocaleDateString('en-GB', {weekday:'long'})}</span>
-                        <span style={{color:'#cbd5e1', fontWeight:'700'}}>&bull;</span>
-                        <span style={{fontSize:'1rem', fontWeight:'800', color:'#0f172a'}}>{now.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric'})}</span>
-                        <span style={{color:'#cbd5e1', fontWeight:'700'}}>&bull;</span>
-                        <span style={{fontSize:'1.45rem', fontWeight:'900', color:'#2563eb'}}>{now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</span>
+                <div className="nav-datetime">
+                    <div className="nav-dt-row">
+                        <span className="nav-day">{now.toLocaleDateString('en-GB', {weekday:'long'})}</span>
+                        <span className="nav-sep">•</span>
+                        <span className="nav-date">{now.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric'})}</span>
+                        <span className="nav-sep">•</span>
+                        <span className="nav-time">{now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: true})}</span>
                     </div>
+                    {hijri && <div className="nav-hijri">{hijri}</div>}
                 </div>
+            );
+        };
+
+        const SlideShow = ({ photos, currentSlide }) => {
+            if (!photos || photos.length === 0) {
+                return (
+                    <div className="slideshow-empty">
+                        <i className="ri-image-2-line icon"></i>
+                        <div className="title">Slideshow Empty</div>
+                        <div className="hint">Add photos in Settings</div>
+                    </div>
+                );
+            }
+            return (
+                <React.Fragment>
+                    {photos.map((p, idx) => (
+                        <img key={p.id} src={p.data} alt="" className={`slideshow-img ${idx === currentSlide ? 'active' : ''}`} />
+                    ))}
+                    {photos.length > 1 && (
+                        <div className="slideshow-dots">
+                            {photos.map((_, idx) => (
+                                <div key={idx} className={`slideshow-dot ${idx === currentSlide ? 'active' : ''}`}></div>
+                            ))}
+                        </div>
+                    )}
+                </React.Fragment>
             );
         };
 
@@ -304,18 +588,32 @@
 
             const [rooms, setRooms] = React.useState(['Room 1', 'Room 2', 'Room 3']);
             const [ticketHeader, setTicketHeader] = React.useState('KLINIK ARA 24 JAM');
-            const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
+            const [ticketFooter, setTicketFooter] = React.useState('Moga segala urutan dimudahkan.');
             const [clinicNote, setClinicNote] = React.useState('');
             
             const [chimeEnabled, setChimeEnabled] = React.useState(true); 
             const [pharmAlertSoundEnabled, setPharmAlertSoundEnabled] = React.useState(false); 
+            // FIX 7a: Added alertSoundTypeRef to avoid stale closure in Firestore listener
+            const [alertSoundType, setAlertSoundType] = React.useState('beep');
+            const alertSoundTypeRef = React.useRef('beep');
             const [voiceGender, setVoiceGender] = React.useState('female');
             const [animEnabled, setAnimEnabled] = React.useState(true);
             const [animDuration, setAnimDuration] = React.useState(3);
 
             const [pharmacyAlertData, setPharmacyAlertData] = React.useState({ msg: '', loc: '' });
             const [showPharmAlert, setShowPharmAlert] = React.useState(false);
-            const [lastAlertRef] = React.useState({current: Date.now()}); 
+            // FIX 1: Was React.useState({current: Date.now()}) — illegal direct state mutation later.
+            // useRef(Date.now()) is the correct API for a mutable non-reactive timestamp.
+            const lastAlertRef = React.useRef(Date.now());
+
+            // Reception → Doctor alert
+            const [doctorAlertData, setDoctorAlertData] = React.useState({ msg: '', patientNum: '' });
+            const [showDoctorAlert, setShowDoctorAlert] = React.useState(false);
+            // FIX 2: Same fix as lastAlertRef above.
+            const lastDoctorAlertRef = React.useRef(Date.now());
+            const [isRegAlertOpen, setIsRegAlertOpen] = React.useState(false);
+            const [regCustomMsg, setRegCustomMsg] = React.useState('');
+            const [regAlertPatientNum, setRegAlertPatientNum] = React.useState('');
 
             const [isDocAlertOpen, setIsDocAlertOpen] = React.useState(false);
             const [docCustomMsg, setDocCustomMsg] = React.useState('');
@@ -329,29 +627,144 @@
             const [audioOn, setAudioOn] = React.useState(false);
             const [newRoom, setNewRoom] = React.useState('');
             const [isBlinking, setIsBlinking] = React.useState(false);
-            
-            // SLIDESHOW
-            const [slideshowImages, setSlideshowImages] = React.useState([]);
-            const [slideshowTimer, setSlideshowTimer] = React.useState(5);
-            const [currentSlideIndex, setCurrentSlideIndex] = React.useState(0);
 
-            const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
+            const [slideshowPhotos, setSlideshowPhotos] = React.useState([]);
+            const [currentSlide, setCurrentSlide] = React.useState(0);
+            const [slideDuration, setSlideDuration] = React.useState(6);
+            const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
+            
+            // FIX 3: Was React.useRef(new Audio(url)) — new Audio() at component level
+            // fires on every render call and can throw before mount on autoplay-blocked browsers.
+            // Lazy-init in the useEffect that needs it instead.
+            const chimeRef = React.useRef(null);
+            const audioCtxRef = React.useRef(null);
 
             React.useEffect(() => {
-                if (view === 'tv' && slideshowImages.length > 0) {
-                    const interval = setInterval(() => {
-                        setCurrentSlideIndex(prev => (prev + 1) % slideshowImages.length);
-                    }, Math.max(3, slideshowTimer) * 1000);
-                    return () => clearInterval(interval);
+                const unlock = () => {
+                    if (!audioCtxRef.current) {
+                        try {
+                            const Ctx = window.AudioContext || window.webkitAudioContext;
+                            if (Ctx) audioCtxRef.current = new Ctx();
+                        } catch(e) { console.warn('AudioContext init failed', e); }
+                    }
+                    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+                        audioCtxRef.current.resume();
+                    }
+                };
+                document.addEventListener('click', unlock);
+                document.addEventListener('keydown', unlock);
+                return () => {
+                    document.removeEventListener('click', unlock);
+                    document.removeEventListener('keydown', unlock);
+                };
+            }, []);
+
+            const playAlertSound = (overrideType) => {
+                const ctx = audioCtxRef.current;
+                if (!ctx || ctx.state === 'suspended') return;
+                const type = overrideType || alertSoundTypeRef.current;
+                const sound = ALERT_SOUNDS[type] || ALERT_SOUNDS.beep;
+                try { sound.play(ctx); } catch(e) { console.warn('playAlertSound failed', e); }
+            };
+
+            // FIX 4a: Added notifEnabledRef — showBrowserNotification is defined once and
+            // captures notifEnabled from the initial closure. The ref stays current always.
+            const [notifEnabled, setNotifEnabled] = React.useState(localStorage.getItem('notif_enabled') === 'true');
+            const notifEnabledRef = React.useRef(localStorage.getItem('notif_enabled') === 'true');
+            const [notifPermission, setNotifPermission] = React.useState(
+                typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+            );
+
+            const prevQueueRef = React.useRef([]);
+            const hasInitializedQueueRef = React.useRef(false);
+
+            const requestNotificationPermission = async () => {
+                if (!('Notification' in window)) {
+                    alert('This browser does not support notifications.');
+                    return;
                 }
-            }, [view, slideshowImages.length, slideshowTimer]);
+                try {
+                    const result = await Notification.requestPermission();
+                    setNotifPermission(result);
+                    if (result === 'granted') {
+                        new Notification('AraQue Notifications Enabled', {
+                            body: 'You will now receive alerts for new patients and dispensary updates.',
+                            tag: 'araque-welcome'
+                        });
+                        setNotifEnabled(true);
+                        // FIX 4c: Keep ref in sync when permission granted
+                        notifEnabledRef.current = true;
+                        localStorage.setItem('notif_enabled', 'true');
+                    }
+                } catch (e) { console.warn('Permission request failed', e); }
+            };
+
+            const showBrowserNotification = (title, body, tag) => {
+                if (!('Notification' in window)) return;
+                if (Notification.permission !== 'granted') return;
+                // FIX 4d: Use ref instead of stale closure over notifEnabled state
+                if (!notifEnabledRef.current) return;
+                try {
+                    const n = new Notification(title, {
+                        body: body || '',
+                        tag: tag || 'araque',
+                        renotify: true,
+                        requireInteraction: false
+                    });
+                    setTimeout(() => { try { n.close(); } catch(e){} }, 8000);
+                    n.onclick = () => { window.focus(); n.close(); };
+                } catch (e) { console.warn('Notification failed', e); }
+            };
 
             React.useEffect(() => {
                 localStorage.setItem('active_view', view);
                 localStorage.setItem('clinic_branch', branch);
-                
+
+                hasInitializedQueueRef.current = false;
+                prevQueueRef.current = [];
+
                 const unsubQ = db.collection("branches").doc(branch).collection("queue").orderBy("time", "desc").onSnapshot(snap => {
-                    setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    const newQueue = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                    if (hasInitializedQueueRef.current) {
+                        const prevQueue = prevQueueRef.current;
+                        const prevIds = new Set(prevQueue.map(p => p.id));
+                        const prevById = new Map(prevQueue.map(p => [p.id, p]));
+
+                        if (view === 'doc') {
+                            const justAdded = newQueue.filter(p =>
+                                !prevIds.has(p.id) &&
+                                p.status === 'waiting' &&
+                                Date.now() - (p.time || 0) < 30000
+                            );
+                            justAdded.forEach(p => {
+                                showBrowserNotification(
+                                    `New Patient · #${p.num}`,
+                                    `${p.name || 'Unnamed'} has been added to the queue.`,
+                                    `new-patient-${p.id}`
+                                );
+                            });
+                        }
+
+                        if (view === 'pharmacy') {
+                            const sentToPharm = newQueue.filter(p => {
+                                const prev = prevById.get(p.id);
+                                return prev && prev.status !== 'collecting' && p.status === 'collecting';
+                            });
+                            sentToPharm.forEach(p => {
+                                showBrowserNotification(
+                                    `Patient #${p.num} → Dispensary`,
+                                    p.remarks ? `Note: ${p.remarks}` : `${p.name || 'Patient'} ready for dispensing.`,
+                                    `to-pharm-${p.id}`
+                                );
+                            });
+                        }
+                    } else {
+                        hasInitializedQueueRef.current = true;
+                    }
+
+                    prevQueueRef.current = newQueue;
+                    setQueue(newQueue);
                     setIsConnected(true);
                 }, (err) => setIsConnected(false));
                 
@@ -366,14 +779,15 @@
                         setTickersEnabled(d.tickersEnabled !== undefined ? d.tickersEnabled : true);
                         setClinicNote(d.clinicNote || '');
                         
-                        setSlideshowImages(d.slideshowImages || []);
-                        setSlideshowTimer(d.slideshowTimer || 5);
-
                         setChimeEnabled(d.chimeEnabled !== undefined ? d.chimeEnabled : true);
                         setPharmAlertSoundEnabled(d.pharmAlertSoundEnabled !== undefined ? d.pharmAlertSoundEnabled : false);
+                        // FIX 7c: Sync ref when Firestore settings update
+                        setAlertSoundType(d.alertSoundType || 'beep');
+                        alertSoundTypeRef.current = d.alertSoundType || 'beep';
                         setVoiceGender(d.voiceGender || 'female');
                         setAnimEnabled(d.animEnabled !== undefined ? d.animEnabled : true);
                         setAnimDuration(d.animDuration || 3);
+                        setSlideDuration(d.slideDuration || 6);
                         
                         const serverTrigger = d.alertData?.trigger || 0;
                         if (serverTrigger > lastAlertRef.current && view === 'pharmacy') {
@@ -381,22 +795,63 @@
                             setPharmacyAlertData(d.alertData);
                             setShowPharmAlert(true);
                             if (d.pharmAlertSoundEnabled) {
-                                // Fallback native audio if alert beep needed
+                                playAlertSound(d.alertSoundType);
                             }
+                            showBrowserNotification(
+                                `Doctor Alert${d.alertData.loc ? ' · ' + d.alertData.loc : ''}`,
+                                d.alertData.msg || 'Doctor needs your attention.',
+                                'doctor-alert'
+                            );
                             setTimeout(() => setShowPharmAlert(false), 4000);
+                        }
+
+                        const docTrigger = d.alertToDoctor?.trigger || 0;
+                        if (docTrigger > lastDoctorAlertRef.current && view === 'doc') {
+                            lastDoctorAlertRef.current = docTrigger;
+                            setDoctorAlertData(d.alertToDoctor);
+                            setShowDoctorAlert(true);
+                            if (d.pharmAlertSoundEnabled) {
+                                playAlertSound(d.alertSoundType);
+                            }
+                            showBrowserNotification(
+                                'Reception Alert',
+                                d.alertToDoctor.msg || 'New patient at reception.',
+                                'reception-alert'
+                            );
+                            setTimeout(() => setShowDoctorAlert(false), 4000);
                         }
                     } else {
                         setRooms(['Room 1', 'Room 2', 'Room 3']);
+                        setChimeEnabled(true);
+                        setTickersEnabled(true);
+                        setPharmAlertSoundEnabled(false);
                     }
                 });
 
-                return () => { unsubQ(); unsubC(); };
+                const unsubS = db.collection("branches").doc(branch).collection("slideshow").orderBy("time", "asc").onSnapshot(snap => {
+                    setSlideshowPhotos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+
+                return () => { unsubQ(); unsubC(); unsubS(); };
             }, [branch, view]);
 
             const updateSettings = (updates) => db.collection("branches").doc(branch).collection("settings").doc("config").set(updates, {merge:true});
             const saveNote = () => updateSettings({ clinicNote: clinicNote });
 
-            const compressImage = (file, maxDim = 1200, quality = 0.7) => new Promise((resolve, reject) => {
+            React.useEffect(() => {
+                if (view !== 'tv' || slideshowPhotos.length <= 1) return;
+                const t = setInterval(() => {
+                    setCurrentSlide(c => (c + 1) % slideshowPhotos.length);
+                }, Math.max(2, slideDuration) * 1000);
+                return () => clearInterval(t);
+            }, [view, slideshowPhotos.length, slideDuration]);
+
+            React.useEffect(() => {
+                if (slideshowPhotos.length === 0) { setCurrentSlide(0); return; }
+                if (currentSlide >= slideshowPhotos.length) setCurrentSlide(0);
+            }, [slideshowPhotos.length]);
+
+            const compressImage = (file, maxDim = 1600, quality = 0.78) => new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const img = new Image();
@@ -411,41 +866,50 @@
                         canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        resolve(canvas.toDataURL('image/jpeg', quality));
+                        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        if (dataUrl.length > 950000) dataUrl = canvas.toDataURL('image/jpeg', 0.55);
+                        if (dataUrl.length > 950000) {
+                            const c2 = document.createElement('canvas');
+                            c2.width = Math.round(width * 0.7); c2.height = Math.round(height * 0.7);
+                            c2.getContext('2d').drawImage(img, 0, 0, c2.width, c2.height);
+                            dataUrl = c2.toDataURL('image/jpeg', 0.6);
+                        }
+                        if (dataUrl.length > 1000000) { reject(new Error("Image too large after compression")); return; }
+                        resolve(dataUrl);
                     };
-                    img.onerror = () => reject(new Error("Image read error"));
+                    img.onerror = () => reject(new Error("Could not read image"));
                     img.src = e.target.result;
                 };
-                reader.onerror = () => reject(new Error("File read error"));
+                reader.onerror = () => reject(new Error("File read failed"));
                 reader.readAsDataURL(file);
             });
 
-            const handleImageUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.size > 2000000) { alert("File is too large. Please use an image under 2MB."); return; }
-                if (slideshowImages.length >= 10) { alert("Max 10 images allowed."); return; }
-
-                try {
-                    const dataUrl = await compressImage(file);
-                    if (dataUrl.length > 900000) {
-                        alert("Image too complex. Try a simpler image.");
-                        return;
+            const handleSlideshowUpload = async (e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length === 0) return;
+                setUploadingPhoto(true);
+                let success = 0, failed = 0;
+                for (const file of files) {
+                    if (!file.type.startsWith('image/')) { failed++; continue; }
+                    try {
+                        const dataUrl = await compressImage(file);
+                        await db.collection("branches").doc(branch).collection("slideshow").add({
+                            data: dataUrl, time: Date.now(), name: file.name || 'photo'
+                        });
+                        success++;
+                    } catch (err) {
+                        console.error("Upload failed for", file.name, err);
+                        failed++;
                     }
-                    const newImages = [...slideshowImages, dataUrl];
-                    setSlideshowImages(newImages);
-                    updateSettings({ slideshowImages: newImages });
-                } catch(err) {
-                    console.error("Upload failed", err);
-                    alert("Failed to process image.");
                 }
+                setUploadingPhoto(false);
                 e.target.value = '';
+                if (failed > 0) alert(`Uploaded ${success} photo(s). ${failed} failed (unsupported or too large).`);
             };
 
-            const removeImage = (idx) => {
-                const newImages = slideshowImages.filter((_, i) => i !== idx);
-                setSlideshowImages(newImages);
-                updateSettings({ slideshowImages: newImages });
+            const handleDeletePhoto = (id) => {
+                if (!confirm("Delete this photo from the slideshow?")) return;
+                db.collection("branches").doc(branch).collection("slideshow").doc(id).delete();
             };
             
             const currentCaller = queue.filter(p => p.callTrigger && p.status === 'calling').sort((a,b) => b.callTrigger - a.callTrigger)[0];
@@ -473,7 +937,11 @@
                                     }, 500);
                                 }
                             };
-                            if (chimeEnabled) { chimeRef.current.play().then(playSequence).catch(e=>{}); } else { playSequence(); }
+                            // FIX 3b: Lazy-init chimeRef before playing
+                            if (!chimeRef.current) {
+                                try { chimeRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); } catch(e) {}
+                            }
+                            if (chimeEnabled && chimeRef.current) { chimeRef.current.play().then(playSequence).catch(e=>{}); } else { playSequence(); }
                         }
                     }
                 }
@@ -484,6 +952,13 @@
                 if (alertPatientNum) finalMsg = `[Pt #${alertPatientNum}] ${finalMsg}`;
                 updateSettings({ alertData: { trigger: Date.now(), loc: docRoomPref, msg: finalMsg } });
                 setDocCustomMsg(''); setAlertPatientNum(''); setIsDocAlertOpen(false);
+            };
+
+            const sendDoctorAlert = (msg) => {
+                let finalMsg = msg || regCustomMsg || "Please attend new patient";
+                if (regAlertPatientNum) finalMsg = `[Pt #${regAlertPatientNum}] ${finalMsg}`;
+                updateSettings({ alertToDoctor: { trigger: Date.now(), msg: finalMsg, patientNum: regAlertPatientNum || '' } });
+                setRegCustomMsg(''); setRegAlertPatientNum(''); setIsRegAlertOpen(false);
             };
 
             const handlePrint = (num) => {
@@ -528,18 +1003,29 @@
                             <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 relative">
                                 <button onClick={() => setIsDocAlertOpen(false)} className="absolute top-4 right-4 text-slate-400 font-bold hover:text-black">&times;</button>
                                 <div className="text-center mb-4"><div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 text-red-600 rounded-full mb-2"><i className="ri-notification-3-fill text-xl"></i></div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Alert Pharmacy</h2></div>
-                                
                                 <div className="mb-4">
                                     <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Your Location</label>
                                     <select value={docRoomPref} onChange={handleDocRoomChange} className="w-full bg-slate-100 p-3 rounded-xl font-bold text-slate-700 outline-none border-2 border-transparent focus:border-blue-500">
                                         {rooms.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
                                 </div>
-
                                 <div className="mb-4"><label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Regarding Patient</label><select value={alertPatientNum} onChange={e => setAlertPatientNum(e.target.value)} className="w-full bg-slate-100 p-3 rounded-xl font-bold text-slate-700 outline-none border-2 border-transparent focus:border-blue-500"><option value="">-- General / No Specific Patient --</option>{queue.map(p => (<option key={p.id} value={p.num}>#{p.num} - {p.name}</option>))}</select></div>
                                 <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Quick Alert</label>
                                 <div className="alert-grid"><button onClick={() => sendAlert("Please Come Here")} className="alert-btn">Please Come Here</button><button onClick={() => sendAlert("Dispense Medication")} className="alert-btn">Dispense Meds</button><button onClick={() => sendAlert("Patient Ready")} className="alert-btn">Patient Ready</button><button onClick={() => sendAlert("Emergency Help")} className="alert-btn bg-red-600 text-white border-red-600 hover:bg-red-700">Emergency</button></div>
                                 <div className="flex gap-2 mt-4"><input value={docCustomMsg} onChange={e => setDocCustomMsg(e.target.value)} placeholder="Or type custom message..." className="flex-1 bg-slate-50 border p-3 rounded-xl text-sm font-semibold outline-none focus:border-blue-500" /><button onClick={() => sendAlert(null)} className="bg-blue-600 text-white px-4 rounded-xl font-bold"><i className="ri-send-plane-fill"></i></button></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isRegAlertOpen && (
+                        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 relative">
+                                <button onClick={() => setIsRegAlertOpen(false)} className="absolute top-4 right-4 text-slate-400 font-bold hover:text-black">&times;</button>
+                                <div className="text-center mb-4"><div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full mb-2"><i className="ri-notification-3-fill text-xl"></i></div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Alert Doctor</h2></div>
+                                <div className="mb-4"><label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Regarding Patient</label><select value={regAlertPatientNum} onChange={e => setRegAlertPatientNum(e.target.value)} className="w-full bg-slate-100 p-3 rounded-xl font-bold text-slate-700 outline-none border-2 border-transparent focus:border-blue-500"><option value="">-- General / No Specific Patient --</option>{queue.filter(p => p.status === 'waiting' || p.status === 'calling').map(p => (<option key={p.id} value={p.num}>#{p.num} - {p.name}</option>))}</select></div>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Quick Alert</label>
+                                <div className="alert-grid"><button onClick={() => sendDoctorAlert("New Patient Registered")} className="alert-btn">New Patient</button><button onClick={() => sendDoctorAlert("Patient Waiting Long")} className="alert-btn">Long Wait</button><button onClick={() => sendDoctorAlert("VIP Patient")} className="alert-btn">VIP</button><button onClick={() => sendDoctorAlert("Urgent — Please See")} className="alert-btn bg-red-600 text-white border-red-600 hover:bg-red-700">Urgent</button></div>
+                                <div className="flex gap-2 mt-4"><input value={regCustomMsg} onChange={e => setRegCustomMsg(e.target.value)} placeholder="Or type custom message..." className="flex-1 bg-slate-50 border p-3 rounded-xl text-sm font-semibold outline-none focus:border-blue-500" /><button onClick={() => sendDoctorAlert(null)} className="bg-blue-600 text-white px-4 rounded-xl font-bold"><i className="ri-send-plane-fill"></i></button></div>
                             </div>
                         </div>
                     )}
@@ -550,35 +1036,101 @@
                                 <div className="p-5 border-b bg-slate-50 flex justify-between items-center"><h2 className="text-xl font-bold text-slate-800">Settings</h2><button onClick={() => setIsSettingsOpen(false)} className="bg-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-sm font-bold">Done</button></div>
                                 <div className="p-6 overflow-y-auto bg-slate-100 space-y-6">
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div><div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div></div></div>
-                                    
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}<div className="ios-item"><span className="ios-label">Show Tickers on TV</span><IOSToggle checked={tickersEnabled} onChange={(val) => { setTickersEnabled(val); updateSettings({tickersEnabled: val}); }} /></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div>{pharmAlertSoundEnabled && (<div className="ios-item-col"><div className="flex justify-between items-center"><span className="ios-label">Sound Type</span><div className="flex gap-2 items-center"><select className="bg-slate-100 font-bold text-blue-600 outline-none rounded-lg px-2 py-1 text-xs" value={alertSoundType} onChange={e => {
+                                        // FIX 7b: Keep alertSoundTypeRef in sync on user change
+                                        setAlertSoundType(e.target.value);
+                                        alertSoundTypeRef.current = e.target.value;
+                                        updateSettings({alertSoundType: e.target.value});
+                                    }}>{Object.entries(ALERT_SOUNDS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}</select><button onClick={() => playAlertSound()} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700">Test</button></div></div><div className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">This sound plays on the receiving station (Doctor or Pharmacy) when an alert is sent. Synthesized locally — no network needed.</div></div>)}<div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Browser Notifications <span className="text-[10px] text-slate-300 normal-case ml-1">(this device only)</span></h3>
+                                        <div className="ios-group">
+                                            <div className="ios-item">
+                                                <span className="ios-label">Permission Status</span>
+                                                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${
+                                                    notifPermission === 'granted' ? 'bg-green-100 text-green-700' :
+                                                    notifPermission === 'denied' ? 'bg-red-100 text-red-700' :
+                                                    notifPermission === 'unsupported' ? 'bg-slate-200 text-slate-500' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                                }`}>{notifPermission}</span>
+                                            </div>
+                                            {notifPermission === 'default' && (
+                                                <div className="ios-item-col">
+                                                    <button onClick={requestNotificationPermission} className="bg-blue-600 text-white py-2.5 rounded-xl font-bold text-sm uppercase tracking-wider">Enable Notifications</button>
+                                                    <div className="text-[11px] text-slate-500 mt-2 leading-snug">Click to allow this device to show desktop alerts when patients are added or sent to the dispensary.</div>
+                                                </div>
+                                            )}
+                                            {notifPermission === 'denied' && (
+                                                <div className="ios-item-col">
+                                                    <div className="text-[11px] text-red-600 font-medium leading-snug">Notifications are blocked. To re-enable: click the lock/info icon next to the URL in Chrome → Site Settings → Notifications → Allow. Then reload this page.</div>
+                                                </div>
+                                            )}
+                                            {notifPermission === 'granted' && (
+                                                <React.Fragment>
+                                                    <div className="ios-item">
+                                                        <span className="ios-label">Receive Notifications</span>
+                                                        {/* FIX 4b: Keep notifEnabledRef in sync on toggle */}
+                                                        <IOSToggle checked={notifEnabled} onChange={(val) => { setNotifEnabled(val); notifEnabledRef.current = val; localStorage.setItem('notif_enabled', val ? 'true' : 'false'); }} />
+                                                    </div>
+                                                    <div className="ios-item-col">
+                                                        <div className="text-[11px] text-slate-500 leading-snug">
+                                                            <span className="font-bold text-slate-700">Doctor view</span> receives alerts when a new patient is registered.<br />
+                                                            <span className="font-bold text-slate-700">Pharmacy view</span> receives alerts when a patient is sent to the dispensary.
+                                                        </div>
+                                                        <button onClick={() => showBrowserNotification('Test Notification', 'If you can see this, notifications are working on this device.', 'araque-test')} className="mt-3 bg-slate-200 text-slate-700 py-2 rounded-xl font-bold text-xs uppercase tracking-wider">Send Test Notification</button>
+                                                    </div>
+                                                </React.Fragment>
+                                            )}
+                                            {notifPermission === 'unsupported' && (
+                                                <div className="ios-item-col">
+                                                    <div className="text-[11px] text-slate-500 leading-snug">This browser does not support web notifications. Use Chrome, Edge, Firefox, or Safari on a desktop/laptop.</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3><div className="ios-group"><div className="ios-item-col"><div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div><div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3><div className="ios-group"><div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div><div className="ios-item-col"><span className="ios-label text-red-600">Top Ticker</span><textarea className="ios-textarea" value={t2Text} onChange={e => {setT2Text(e.target.value); updateSettings({t2Text: e.target.value})}} /></div></div></div>
                                     <div>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Slideshow</h3>
                                         <div className="ios-group">
                                             <div className="ios-item-col">
-                                                <div className="flex justify-between mb-2"><span className="ios-label">Slide Duration</span><span className="text-sm font-bold text-blue-600">{slideshowTimer}s</span></div>
-                                                <input type="range" min="3" max="60" className="ios-range" value={slideshowTimer} onChange={e => {setSlideshowTimer(Number(e.target.value)); updateSettings({slideshowTimer: Number(e.target.value)})}} />
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="ios-label">Slide Duration</span>
+                                                    <span className="text-sm font-bold text-blue-600">{slideDuration}s</span>
+                                                </div>
+                                                <input type="range" min="3" max="20" className="ios-range" value={slideDuration} onChange={e => {setSlideDuration(Number(e.target.value)); updateSettings({slideDuration: Number(e.target.value)})}} />
                                             </div>
                                             <div className="ios-item-col">
-                                                <span className="ios-label mb-2">Upload Images (Max 10)</span>
-                                                <input type="file" accept="image/*" onChange={handleImageUpload} className="mb-4 text-xs" />
-                                                <div className="grid grid-cols-5 gap-2">
-                                                    {slideshowImages.map((img, i) => (
-                                                        <div key={i} className="relative w-full h-12 bg-slate-200 rounded overflow-hidden group">
-                                                            <img src={img} className="w-full h-full object-cover" />
-                                                            <button onClick={() => removeImage(i)} className="absolute inset-0 bg-black/50 text-white font-bold opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs">X</button>
-                                                        </div>
-                                                    ))}
+                                                <div className="flex justify-between items-center">
+                                                    <span className="ios-label">Photos ({slideshowPhotos.length})</span>
+                                                    <label className={`upload-btn ${uploadingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                        <input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handleSlideshowUpload} disabled={uploadingPhoto} />
+                                                        <i className="ri-upload-2-line"></i>
+                                                        {uploadingPhoto ? 'Uploading…' : 'Add Photos'}
+                                                    </label>
                                                 </div>
+                                                {slideshowPhotos.length === 0 ? (
+                                                    <div className="text-center py-8 text-sm text-slate-400 font-medium">
+                                                        <i className="ri-image-add-line text-3xl block mb-2 opacity-50"></i>
+                                                        No photos yet. Tap "Add Photos" to upload.
+                                                    </div>
+                                                ) : (
+                                                    <div className="photo-grid">
+                                                        {slideshowPhotos.map(p => (
+                                                            <div key={p.id} className="photo-thumb">
+                                                                <img src={p.data} alt={p.name || ''} />
+                                                                <button className="photo-delete" onClick={() => handleDeletePhoto(p.id)} title="Delete">×</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="text-[10px] text-slate-400 font-medium mt-3 leading-snug">Photos are auto-resized &amp; compressed. Best results: landscape JPG/PNG, under 5MB each.</div>
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}<div className="ios-item"><span className="ios-label">Show Tickers on TV</span><IOSToggle checked={tickersEnabled} onChange={(val) => { setTickersEnabled(val); updateSettings({tickersEnabled: val}); }} /></div></div></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Room Management</h3><div className="ios-group"><div className="ios-item-col"><div className="room-add-row"><input className="room-input" placeholder="New Room Name" value={newRoom} onChange={e => setNewRoom(e.target.value)} /><button className="room-btn" onClick={handleAddRoom}>Add</button></div><div className="flex flex-col">{rooms.map((room, idx) => (<div key={idx} className="room-chip"><span className="font-semibold text-slate-700 text-sm">{room}</span><button onClick={() => handleDeleteRoom(idx)} className="text-red-500 font-bold text-lg leading-none">&times;</button></div>))}</div></div></div></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">TV Tickers</h3><div className="ios-group"><div className="ios-item-col"><span className="ios-label text-blue-600">Bottom Ticker</span><textarea className="ios-textarea" value={t1Text} onChange={e => {setT1Text(e.target.value); updateSettings({t1Text: e.target.value})}} /></div></div></div>
                                     <div className="ios-group"><div className="ios-item" onClick={() => {if(confirm("DANGER: Wipe database?")) db.collection("branches").doc(branch).collection("queue").get().then(s=>s.forEach(d=>d.ref.delete()))}}><span className="ios-label text-red-500 w-full text-center cursor-pointer">Factory Reset Database</span></div></div>
-                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">AraQue Lite v27.3</div>
+                                    <div className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pb-4">AraQue Lite v27.0 • Dev: Dr Asyraf</div>
                                 </div>
                             </div>
                         </div>
@@ -595,66 +1147,71 @@
                     )}
 
                     <nav className="global-nav">
-                        <div className="flex items-center gap-6">
-                            <span onClick={() => view === 'tv' && setView('reg')} className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}>AraQue Pro</span>
-                            <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">
-                                {['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}
-                            </select>
-                        </div>
-                        <div className={`flex gap-1 items-center ${view === 'tv' ? 'hidden' : ''}`}>
-                            {view === 'doc' && (<button onClick={() => setIsDocAlertOpen(true)} className="mr-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition p-2 rounded-full shadow-sm" title="Alert Pharmacy"><i className="ri-notification-3-fill text-xl"></i></button>)}
-                            {['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}
-                            <button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl hover:bg-slate-100 rounded-full transition">⚙️</button>
-                        </div>
+                        <div className="flex items-center gap-6"><span onClick={() => view === 'tv' && setView('reg')} className={`text-xl font-bold tracking-tight text-blue-600 ${view === 'tv' ? 'cursor-pointer hover:opacity-80' : ''}`}>AraQue Lite</span><select value={branch} onChange={e => setBranch(e.target.value)} className="bg-transparent border-none text-sm font-bold uppercase text-slate-500">{['Kajang', 'Seri Kembangan', 'Semenyih'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                        {view === 'tv' ? (
+                            <HeaderDateTime />
+                        ) : (
+                            <div className="flex gap-1 items-center">
+                                {view === 'doc' && (<button onClick={() => setIsDocAlertOpen(true)} className="mr-4 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition p-2 rounded-full shadow-sm" title="Alert Pharmacy"><i className="ri-notification-3-fill text-xl"></i></button>)}
+                                {view === 'reg' && (<button onClick={() => setIsRegAlertOpen(true)} className="mr-4 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition p-2 rounded-full shadow-sm" title="Alert Doctor"><i className="ri-notification-3-fill text-xl"></i></button>)}
+                                {['reg', 'doc', 'pharmacy', 'tv'].map(v => <button key={v} onClick={() => setView(v)} className={`px-6 py-2 rounded-full text-xs font-bold uppercase transition-all ${view === v ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-black'}`}>{v}</button>)}
+                                <button onClick={() => setIsSettingsOpen(true)} className="ml-4 p-2 text-xl hover:bg-slate-100 rounded-full transition">⚙️</button>
+                            </div>
+                        )}
                     </nav>
 
                     <div className="content-area">
                         {view === 'pharmacy' && showPharmAlert && (<div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-4 z-50 shadow-xl alert-flash flex flex-col justify-center items-center"><div className="flex items-center gap-2 font-black text-xl"><i className="ri-alarm-warning-fill"></i> ALERT: {pharmacyAlertData.loc.toUpperCase()}</div><div className="font-bold text-sm bg-red-700 px-4 py-1 rounded-full mt-1">{pharmacyAlertData.msg}</div><button onClick={() => setShowPharmAlert(false)} className="mt-2 text-[10px] font-bold opacity-80 border border-white/50 px-2 rounded hover:bg-white/20">DISMISS</button></div>)}
+                        {view === 'doc' && showDoctorAlert && (<div className="absolute top-0 left-0 w-full bg-blue-600 text-white text-center py-4 z-50 shadow-xl alert-flash-blue flex flex-col justify-center items-center"><div className="flex items-center gap-2 font-black text-xl"><i className="ri-alarm-warning-fill"></i> RECEPTION ALERT</div><div className="font-bold text-sm bg-blue-800 px-4 py-1 rounded-full mt-1">{doctorAlertData.msg}</div><button onClick={() => setShowDoctorAlert(false)} className="mt-2 text-[10px] font-bold opacity-80 border border-white/50 px-2 rounded hover:bg-white/20">DISMISS</button></div>)}
 
                         {view === 'tv' ? (
-                            <div className="tv-screen-new">
-                                {/* HEADER */}
-                                <div className="tv-header">
-                                    <HeaderDateTime />
-                                </div>
+                            <div className="tv-screen">
+                                <div className={`tv-layout-v3 ${tickersEnabled ? 'with-ticker' : ''}`}>
+                                    {/* LEFT: Slideshow */}
+                                    <div className="slideshow-tile">
+                                        <SlideShow photos={slideshowPhotos} currentSlide={currentSlide} />
+                                    </div>
 
-                                {/* BODY */}
-                                <div className="tv-body">
-                                    <div className="tv-col-left">
-                                        <div className={`calling-box ${isBlinking ? 'blink-anim' : ''}`}>
-                                            {!audioOn && <div onClick={() => setAudioOn(true)} className="absolute z-50 cursor-pointer bg-white/20 p-2 rounded-full text-xs font-bold uppercase border border-white">Start Audio</div>}
-                                            <div className="lbl-calling">Calling</div>
-                                            <div className="lbl-number">{currentCaller?.num || '--'}</div>
-                                            <div className="lbl-loc">{currentCaller?.loc || 'Standby'}</div>
+                                    {/* RIGHT COLUMN: Now Calling + Queue Monitor */}
+                                    <div className="tv-right-col">
+                                        <div className={`bento-tile now-calling-wrapper ${isBlinking ? 'hero-active' : ''}`}>
+                                            {!audioOn && (
+                                                <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md" style={{borderRadius:'2.5rem'}}>
+                                                    <button className="bg-blue-600 text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl animate-pulse">Start Audio</button>
+                                                </div>
+                                            )}
+                                            <div className="nc-label">Now Calling</div>
+                                            <div className="nc-number">{currentCaller?.num || '---'}</div>
+                                            <div className="nc-location">{currentCaller?.loc || 'STANDBY'}</div>
                                         </div>
-                                        
-                                        <div className="queue-box">
-                                            <div className="q-header"><span>Number</span><span>Location</span></div>
-                                            <div className="q-list">
-                                                {queue.slice(0, 8).map(p => (
-                                                    <div key={p.id} className="q-item">
-                                                        <span>{p.num}</span>
-                                                        <span className="text-blue-900">{p.loc}</span>
+
+                                        <div className="bento-tile monitor-tile monitor-wrapper">
+                                            <div className="monitor-header">
+                                                <span>No.</span>
+                                                <span>Location</span>
+                                                <span>Status</span>
+                                            </div>
+                                            <div className="monitor-scroll">
+                                                {queue.slice(0,30).map(p => (
+                                                    <div key={p.id} className="monitor-item">
+                                                        <span className="text-4xl font-black text-slate-800">#{p.num}</span>
+                                                        <span className="text-xl font-bold text-blue-600 uppercase truncate w-full">{p.loc.replace('Waiting Area', 'Wait')}</span>
+                                                        {getStatusBadge(p.status)}
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* RIGHT: SLIDESHOW */}
-                                    <div className="slideshow-box">
-                                        {slideshowImages.length > 0 ? (
-                                            <img src={slideshowImages[currentSlideIndex]} className="slide-img" />
-                                        ) : (
-                                            <div className="placeholder-text">Image Slideshow Area<br/><span className="text-sm font-normal opacity-70">Upload images in settings</span></div>
-                                        )}
-                                    </div>
                                 </div>
 
-                                {/* FOOTER */}
                                 {tickersEnabled && (
-                                    <div className="tv-ticker-area">
-                                        <div className="ticker-text-lg">{t1Text}</div>
+                                    <div className="ticker-container">
+                                        <div className="ticker-layer-2" style={{backgroundColor: t2Bg, color: t2Color}}>
+                                            <div className="ticker-move-fast">{t2Text}</div>
+                                        </div>
+                                        <div className="ticker-layer-1" style={{backgroundColor: t1Bg, color: t1Color}}>
+                                            <div className="ticker-move-slow">{t1Text}</div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -667,10 +1224,49 @@
                                         <div className="stat-square bg-red-500"><span className="text-6xl font-black">{pendingPharm}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Pending Pharm</span></div>
                                         <div className="stat-square bg-green-500"><span className="text-6xl font-black">{totalPatients}</span><span className="text-xs font-bold uppercase mt-2 opacity-80">Total</span></div>
                                     </div>
-                                    <div className="bento-tile bg-yellow-100 flex-1 p-6 items-start text-left relative shadow-sm" style={{borderRadius:'2rem'}}>
-                                        <h3 className="font-bold text-yellow-700 mb-2 flex items-center gap-2"><i className="ri-sticky-note-fill"></i> Staff Notice Board</h3>
-                                        <textarea className="w-full h-full bg-transparent resize-none outline-none text-yellow-900 font-medium text-sm" placeholder="Type important notices here (e.g. Break times, VIPs)..." value={clinicNote} onChange={(e) => setClinicNote(e.target.value)} onBlur={saveNote}></textarea>
-                                        <div className="absolute bottom-4 right-4 text-[10px] text-yellow-600 font-bold uppercase opacity-50">Auto-saves</div>
+
+                                    <div className="reg-bottom-row">
+                                        <div className="reg-list-tile">
+                                            <div className="reg-list-header">
+                                                <div className="font-black text-xs uppercase tracking-widest text-slate-600">Queue · {queue.length} {queue.length === 1 ? 'patient' : 'patients'}</div>
+                                                <button onClick={() => setIsRegAlertOpen(true)} className="bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1" title="Send general alert to doctor"><i className="ri-notification-3-fill"></i> General Alert</button>
+                                            </div>
+                                            <div className="reg-list-scroll monitor-scroll">
+                                                {queue.length === 0 ? (
+                                                    <div className="reg-list-empty">
+                                                        <i className="ri-inbox-line text-3xl block mb-2 opacity-50"></i>
+                                                        No patients in queue yet
+                                                    </div>
+                                                ) : queue.map(p => (
+                                                    <div key={p.id} className={`reg-list-row ${p.status === 'finished' ? 'done' : ''}`}>
+                                                        <span className="rl-num">#{p.num}</span>
+                                                        <span className="rl-name">{p.name || '---'}</span>
+                                                        <span className={`rl-status ${
+                                                            p.status === 'calling' ? 'bg-red-100 text-red-600' :
+                                                            p.status === 'collecting' ? 'bg-yellow-100 text-yellow-700' :
+                                                            p.status === 'finished' ? 'bg-slate-200 text-slate-500' :
+                                                            'bg-slate-100 text-slate-500'
+                                                        }`}>{p.status === 'waiting' ? 'WAIT' : p.status.toUpperCase()}</span>
+                                                        <button
+                                                            onClick={() => { setRegAlertPatientNum(p.num); setIsRegAlertOpen(true); }}
+                                                            className="rl-btn-alert"
+                                                            title={`Alert doctor about #${p.num}`}
+                                                        ><i className="ri-notification-3-fill"></i></button>
+                                                        <button
+                                                            onClick={() => { if(confirm(`Delete patient #${p.num}?`)) db.collection("branches").doc(branch).collection("queue").doc(p.id).delete(); }}
+                                                            className="rl-btn-del"
+                                                            title="Delete"
+                                                        >×</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="bento-tile bg-yellow-100 p-4 items-start text-left relative shadow-sm overflow-hidden" style={{borderRadius:'1.5rem'}}>
+                                            <h3 className="font-bold text-yellow-700 mb-1 flex items-center gap-2 text-sm flex-shrink-0"><i className="ri-sticky-note-fill"></i> Staff Notice Board</h3>
+                                            <textarea className="w-full flex-1 min-h-0 bg-transparent resize-none outline-none text-yellow-900 font-medium text-xs" placeholder="Type important notices here (e.g. Break times, VIPs)..." value={clinicNote} onChange={(e) => setClinicNote(e.target.value)} onBlur={saveNote}></textarea>
+                                            <div className="absolute bottom-2 right-3 text-[9px] text-yellow-600 font-bold uppercase opacity-50">Auto-saves</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -683,14 +1279,13 @@
                                             <div key={p.id} className={`p-4 border-b flex items-center gap-4 transition-all ${p.status === 'finished' ? 'bg-slate-100 opacity-60' : 'hover:bg-slate-50'}`}>
                                                 <input type="checkbox" className="checkbox-custom" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} />
                                                 <div className="w-12 text-xl font-black">#{p.num}</div>
-                                                <div className="flex-1 min-w-0 flex flex-col pr-2"><span className="font-bold text-sm uppercase text-slate-700 leading-tight break-words">{p.name || '---'}</span></div>
-
+                                                <div className="flex-1 min-w-0 flex flex-col pr-2">
+                                                    <span className="font-bold text-sm uppercase text-slate-700 leading-tight break-words">{p.name || '---'}</span>
+                                                </div>
                                                 {view === 'doc' && (<div className="flex-shrink-0 flex gap-2"><span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border uppercase truncate w-20">{p.loc}</span><span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase w-20 text-center ${p.status==='calling'?'bg-red-100 text-red-600': p.status==='finished'?'bg-slate-200 text-slate-500':'bg-white text-slate-400'}`}>{p.status}</span></div>)}
-                                                
                                                 {view === 'pharmacy' && (<div className="flex-shrink-0"><textarea defaultValue={p.remarks} onBlur={e => updatePatient(p.id, p.status, p.loc, false, e.target.value)} className="w-64 text-xs p-2 bg-yellow-50 border rounded h-16 resize-none" placeholder="Note..."/></div>)}
-                                                
                                                 <div className="flex gap-1 flex-shrink-0">
-                                                    {view === 'doc' ? (<>{rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}<button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button></>) : (<><button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button><button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button></>)}
+                                                    {view === 'doc' ? (<>{rooms.map(r => <button key={r} onClick={() => updatePatient(p.id, 'calling', r, true)} className="bg-slate-200 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300">Call {r.split(' ')[1]}</button>)}<button onClick={() => setRemarksTarget(p)} className="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase">To Pharm</button><button onClick={() => { setAlertPatientNum(p.num); setIsDocAlertOpen(true); }} className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition px-3 py-2 rounded-lg" title={`Alert Pharmacy about #${p.num}`}><i className="ri-notification-3-fill text-xs"></i></button></>) : (<><button onClick={() => updatePatient(p.id, 'calling', 'Pharmacy', true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Call</button><button onClick={() => updatePatient(p.id, 'finished', 'Done')} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Done</button></>)}
                                                     <button onClick={() => db.collection("branches").doc(branch).collection("queue").doc(p.id).delete()} className="text-slate-300 px-2 font-bold hover:text-red-500">✕</button>
                                                 </div>
                                             </div>
