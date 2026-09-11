@@ -973,7 +973,8 @@
             };
 
             const updatePatient = (id, s, l, trig=false, rem=null) => {
-                const data = { status: s, loc: l, time: Date.now() };
+                // Preserve the queue timestamp so patient updates keep their position.
+                const data = { status: s, loc: l };
                 if (trig) data.callTrigger = Date.now();
                 if (rem !== null) data.remarks = rem;
                 db.collection("branches").doc(branch).collection("queue").doc(id).update(data);
