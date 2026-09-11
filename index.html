@@ -477,6 +477,30 @@
             });
         }
 
+        // Four ascending bell notes for the TV's airport-style announcement cue.
+        const QUEUE_CHIME_DURATION_MS = 2200;
+        function playQueueChime(ctx) {
+            const now = ctx.currentTime;
+            [523.25, 659.25, 783.99, 1046.50].forEach((frequency, index) => {
+                const start = now + index * 0.35;
+                const duration = index === 3 ? 1.15 : 0.85;
+                [{ ratio: 1, volume: 0.22 }, { ratio: 2, volume: 0.035 }].forEach(part => {
+                    const oscillator = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = frequency * part.ratio;
+                    oscillator.connect(gain);
+                    gain.connect(ctx.destination);
+                    gain.gain.setValueAtTime(0.0001, start);
+                    gain.gain.linearRampToValueAtTime(part.volume, start + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+                    oscillator.start(start);
+                    oscillator.stop(start + duration);
+                    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+                });
+            });
+        }
+
         function synthBell(ctx) {
             try {
                 [{ f: 880, vol: 0.3 }, { f: 1108, vol: 0.18 }].forEach(part => {
@@ -636,24 +660,33 @@
             const [slideDuration, setSlideDuration] = React.useState(6);
             const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
             
-            const chimeRef = React.useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
             const audioCtxRef = React.useRef(null);
 
-            // Lazily initialize AudioContext on first interaction so alert sounds work from
-            // any view, not just TV. Chrome starts the context "suspended" until a user gesture
-            // touches the page — clicking anywhere unsuspends it.
+            const unlockAudio = async () => {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) throw new Error('Web Audio is unavailable');
+                if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                    audioCtxRef.current = new Ctx();
+                }
+                const ctx = audioCtxRef.current;
+                if (ctx.state !== 'running') await ctx.resume();
+                return ctx;
+            };
+
+            const startAudio = async () => {
+                try {
+                    const ctx = await unlockAudio();
+                    if (ctx.state !== 'running') throw new Error('Audio could not be activated');
+                    if (chimeEnabled) playQueueChime(ctx);
+                    setAudioOn(true);
+                } catch (e) {
+                    console.warn('Audio activation failed', e);
+                    alert('Could not start audio. Please tap Start Audio again.');
+                }
+            };
+
             React.useEffect(() => {
-                const unlock = () => {
-                    if (!audioCtxRef.current) {
-                        try {
-                            const Ctx = window.AudioContext || window.webkitAudioContext;
-                            if (Ctx) audioCtxRef.current = new Ctx();
-                        } catch(e) { console.warn('AudioContext init failed', e); }
-                    }
-                    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-                        audioCtxRef.current.resume();
-                    }
-                };
+                const unlock = () => { unlockAudio().catch(e => console.warn('Audio unlock failed', e)); };
                 document.addEventListener('click', unlock);
                 document.addEventListener('keydown', unlock);
                 return () => {
@@ -944,7 +977,16 @@
                                     }, 500);
                                 }
                             };
-                            if (chimeEnabled) { chimeRef.current.play().then(playSequence).catch(e=>{}); } else { playSequence(); }
+                            if (chimeEnabled) {
+                                unlockAudio().then(ctx => {
+                                    playQueueChime(ctx);
+                                    // Allow the final bell note to fade before the announcement.
+                                    setTimeout(playSequence, QUEUE_CHIME_DURATION_MS);
+                                }).catch(e => {
+                                    console.warn('Queue chime failed', e);
+                                    playSequence();
+                                });
+                            } else { playSequence(); }
                         }
                     }
                 }
@@ -1173,7 +1215,7 @@
                                     <div className="tv-right-col">
                                         <div className={`bento-tile now-calling-wrapper ${isBlinking ? 'hero-active' : ''}`}>
                                             {!audioOn && (
-                                                <div onClick={() => setAudioOn(true)} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md" style={{borderRadius:'2.5rem'}}>
+                                                <div onClick={startAudio} className="absolute inset-0 z-50 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md" style={{borderRadius:'2.5rem'}}>
                                                     <button className="bg-blue-600 text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest shadow-2xl animate-pulse">Start Audio</button>
                                                 </div>
                                             )}
