@@ -477,11 +477,19 @@
             });
         }
 
-        // Four ascending bell notes for the TV's airport-style announcement cue.
+        // Ascending opening cue and descending closing cue for TV announcements.
         const QUEUE_CHIME_DURATION_MS = 2200;
-        function playQueueChime(ctx) {
+        function playQueueChime(ctx, closing = false, volume = 100) {
+            const level = Number.isFinite(volume) ? Math.max(0, Math.min(100, volume)) / 100 : 1;
+            if (level === 0) return;
+            const output = ctx.createGain();
+            output.gain.value = level;
+            output.connect(ctx.destination);
+            let activeNotes = 8;
             const now = ctx.currentTime;
-            [523.25, 659.25, 783.99, 1046.50].forEach((frequency, index) => {
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            if (closing) notes.reverse();
+            notes.forEach((frequency, index) => {
                 const start = now + index * 0.35;
                 const duration = index === 3 ? 1.15 : 0.85;
                 [{ ratio: 1, volume: 0.22 }, { ratio: 2, volume: 0.035 }].forEach(part => {
@@ -490,13 +498,17 @@
                     oscillator.type = 'sine';
                     oscillator.frequency.value = frequency * part.ratio;
                     oscillator.connect(gain);
-                    gain.connect(ctx.destination);
+                    gain.connect(output);
                     gain.gain.setValueAtTime(0.0001, start);
                     gain.gain.linearRampToValueAtTime(part.volume, start + 0.015);
                     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
                     oscillator.start(start);
                     oscillator.stop(start + duration);
-                    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+                    oscillator.onended = () => {
+                        oscillator.disconnect();
+                        gain.disconnect();
+                        if (--activeNotes === 0) output.disconnect();
+                    };
                 });
             });
         }
@@ -623,7 +635,11 @@
             const [ticketFooter, setTicketFooter] = React.useState('Moga segala urusan dimudahkan.');
             const [clinicNote, setClinicNote] = React.useState('');
             
-            const [chimeEnabled, setChimeEnabled] = React.useState(true); 
+            const [chimeEnabled, setChimeEnabled] = React.useState(true);
+            const [chimeVolume, setChimeVolume] = React.useState(100);
+            const [voiceVolume, setVoiceVolume] = React.useState(100);
+            const [testingAnnouncement, setTestingAnnouncement] = React.useState(false);
+            const announcementTestRef = React.useRef(false);
             const [pharmAlertSoundEnabled, setPharmAlertSoundEnabled] = React.useState(false); 
             const [alertSoundType, setAlertSoundType] = React.useState('beep');
             const [voiceGender, setVoiceGender] = React.useState('female');
@@ -677,7 +693,7 @@
                 try {
                     const ctx = await unlockAudio();
                     if (ctx.state !== 'running') throw new Error('Audio could not be activated');
-                    if (chimeEnabled) playQueueChime(ctx);
+                    if (chimeEnabled) playQueueChime(ctx, false, chimeVolume);
                     setAudioOn(true);
                 } catch (e) {
                     console.warn('Audio activation failed', e);
@@ -820,6 +836,8 @@
                         setClinicNote(d.clinicNote || '');
                         
                         setChimeEnabled(d.chimeEnabled !== undefined ? d.chimeEnabled : true);
+                        setChimeVolume(Number.isFinite(d.chimeVolume) ? Math.max(0, Math.min(100, d.chimeVolume)) : 100);
+                        setVoiceVolume(Number.isFinite(d.voiceVolume) ? Math.max(0, Math.min(100, d.voiceVolume)) : 100);
                         setPharmAlertSoundEnabled(d.pharmAlertSoundEnabled !== undefined ? d.pharmAlertSoundEnabled : false);
                         setAlertSoundType(d.alertSoundType || 'beep');
                         setVoiceGender(d.voiceGender || 'female');
@@ -952,6 +970,53 @@
                 db.collection("branches").doc(branch).collection("slideshow").doc(id).delete();
             };
             
+            const createAnnouncement = (text) => {
+                const msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'en-US';
+                msg.volume = voiceVolume / 100;
+                const voices = window.speechSynthesis.getVoices();
+                const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+                msg.voice = englishVoices.find(v => v.name.toLowerCase().includes(voiceGender === 'male' ? 'male' : 'female')) || englishVoices[0] || voices[0] || null;
+                return msg;
+            };
+
+            const testAnnouncement = async () => {
+                if (announcementTestRef.current) return;
+                if (!('speechSynthesis' in window)) {
+                    alert('Voice announcements are not supported in this browser.');
+                    return;
+                }
+                if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+                    alert('Please wait for the current announcement to finish.');
+                    return;
+                }
+                announcementTestRef.current = true;
+                setTestingAnnouncement(true);
+                try {
+                    const ctx = await unlockAudio();
+                    if (chimeEnabled) {
+                        playQueueChime(ctx, false, chimeVolume);
+                        await new Promise(resolve => setTimeout(resolve, QUEUE_CHIME_DURATION_MS + 500));
+                    }
+                    await new Promise((resolve, reject) => {
+                        const msg = createAnnouncement('Number 123. Proceed to Room 1.');
+                        msg.onend = resolve;
+                        msg.onerror = event => reject(new Error(event.error));
+                        window.speechSynthesis.speak(msg);
+                    });
+                    if (chimeEnabled) {
+                        playQueueChime(await unlockAudio(), true, chimeVolume);
+                        await new Promise(resolve => setTimeout(resolve, QUEUE_CHIME_DURATION_MS));
+                    }
+                } catch (e) {
+                    console.warn('Announcement preview failed', e);
+                    alert('Could not complete the audio test. Please try again.');
+                } finally {
+                    announcementTestRef.current = false;
+                    setTestingAnnouncement(false);
+                }
+            };
+
             const currentCaller = queue.filter(p => p.callTrigger && p.status === 'calling').sort((a,b) => b.callTrigger - a.callTrigger)[0];
             const lastCallId = React.useRef(0);
 
@@ -967,19 +1032,23 @@
                             const playSequence = () => {
                                 if ('speechSynthesis' in window) {
                                     setTimeout(() => {
-                                        const msg = new SpeechSynthesisUtterance(`Number ${currentCaller.num}. Proceed to ${currentCaller.loc}.`);
-                                        msg.lang = 'en-US'; 
-                                        const voices = window.speechSynthesis.getVoices();
-                                        const englishVoices = voices.filter(v => v.lang.startsWith('en'));
-                                        const preferredVoice = englishVoices.find(v => v.name.toLowerCase().includes(voiceGender === 'male' ? 'male' : 'female')) || englishVoices[0] || voices[0];
-                                        if(preferredVoice) msg.voice = preferredVoice;
+                                        const msg = createAnnouncement(`Number ${currentCaller.num}. Proceed to ${currentCaller.loc}.`);
+                                        if (chimeEnabled) {
+                                            msg.onend = () => {
+                                                // Skip an older call's closing cue if a newer call has begun.
+                                                if (lastCallId.current !== currentCaller.callTrigger) return;
+                                                unlockAudio().then(ctx => {
+                                                    if (lastCallId.current === currentCaller.callTrigger) playQueueChime(ctx, true, chimeVolume);
+                                                }).catch(e => console.warn('Closing queue chime failed', e));
+                                            };
+                                        }
                                         window.speechSynthesis.speak(msg);
                                     }, 500);
                                 }
                             };
                             if (chimeEnabled) {
                                 unlockAudio().then(ctx => {
-                                    playQueueChime(ctx);
+                                    playQueueChime(ctx, false, chimeVolume);
                                     // Allow the final bell note to fade before the announcement.
                                     setTimeout(playSequence, QUEUE_CHIME_DURATION_MS);
                                 }).catch(e => {
@@ -990,7 +1059,7 @@
                         }
                     }
                 }
-            }, [currentCaller, view, audioOn, chimeEnabled, voiceGender, animEnabled, animDuration]);
+            }, [currentCaller, view, audioOn, chimeEnabled, chimeVolume, voiceVolume, voiceGender, animEnabled, animDuration]);
 
             const sendAlert = (msg) => {
                 let finalMsg = msg || docCustomMsg || "Need Assistance";
@@ -1083,7 +1152,7 @@
                                 <div className="p-6 overflow-y-auto bg-slate-100 space-y-6">
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">General</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Clinic Header</span><input className="ios-input" value={ticketHeader} onChange={e => {setTicketHeader(e.target.value); updateSettings({ticketHeader: e.target.value})}} /></div><div className="ios-item"><span className="ios-label">Ticket Footer</span><input className="ios-input" value={ticketFooter} onChange={e => {setTicketFooter(e.target.value); updateSettings({ticketFooter: e.target.value})}} /></div></div></div>
                                     <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Visuals</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Blink Animation</span><IOSToggle checked={animEnabled} onChange={(val) => { setAnimEnabled(val); updateSettings({animEnabled: val}); }} /></div>{animEnabled && (<div className="ios-item-col"><div className="flex justify-between mb-2"><span className="ios-label">Blink Duration</span><span className="text-sm font-bold text-blue-600">{animDuration}s</span></div><input type="range" min="1" max="10" className="ios-range" value={animDuration} onChange={e => {setAnimDuration(Number(e.target.value)); updateSettings({animDuration: Number(e.target.value)})}} /></div>)}<div className="ios-item"><span className="ios-label">Show Tickers on TV</span><IOSToggle checked={tickersEnabled} onChange={(val) => { setTickersEnabled(val); updateSettings({tickersEnabled: val}); }} /></div></div></div>
-                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item"><span className="ios-label">Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div>{pharmAlertSoundEnabled && (<div className="ios-item-col"><div className="flex justify-between items-center"><span className="ios-label">Sound Type</span><div className="flex gap-2 items-center"><select className="bg-slate-100 font-bold text-blue-600 outline-none rounded-lg px-2 py-1 text-xs" value={alertSoundType} onChange={e => { setAlertSoundType(e.target.value); updateSettings({alertSoundType: e.target.value}); }}>{Object.entries(ALERT_SOUNDS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}</select><button onClick={() => playAlertSound()} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700">Test</button></div></div><div className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">This sound plays on the receiving station (Doctor or Pharmacy) when an alert is sent. Synthesized locally — no network needed.</div></div>)}<div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
+                                    <div><h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Audio & Voice</h3><div className="ios-group"><div className="ios-item"><span className="ios-label">Enable TV Chime</span><IOSToggle checked={chimeEnabled} onChange={(val) => { setChimeEnabled(val); updateSettings({chimeEnabled: val}); }} /></div><div className="ios-item-col"><div className="flex justify-between items-center"><label htmlFor="chime-volume" className="ios-label">Chime Volume</label><span className="text-sm font-bold text-blue-600">{chimeVolume}%</span></div><input id="chime-volume" type="range" min="0" max="100" step="1" className="ios-range" value={chimeVolume} onChange={e => { const volume = Number(e.target.value); setChimeVolume(volume); updateSettings({chimeVolume: volume}); }} /><div className="flex justify-between items-center mt-3"><span className="text-[10px] text-slate-400 font-medium">Opening and closing chimes · 0% mutes</span><button onClick={() => unlockAudio().then(ctx => playQueueChime(ctx, false, chimeVolume)).catch(e => console.warn('Chime preview failed', e))} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700">Test Chime</button></div></div><div className="ios-item-col"><div className="flex justify-between items-center"><label htmlFor="voice-volume" className="ios-label">Calling Voice Volume</label><span className="text-sm font-bold text-blue-600">{voiceVolume}%</span></div><input id="voice-volume" type="range" min="0" max="100" step="1" className="ios-range" value={voiceVolume} onChange={e => { const volume = Number(e.target.value); setVoiceVolume(volume); updateSettings({voiceVolume: volume}); }} /><p className="text-[10px] text-slate-400 font-medium mt-3">If the voice is louder than the chime, lower the voice volume. Try chime 100% and voice 60%, then adjust on your TV speakers.</p><button disabled={testingAnnouncement} onClick={testAnnouncement} className="mt-3 bg-blue-600 text-white px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700 disabled:opacity-50">{testingAnnouncement ? 'Playing Test…' : 'Test Chime + Voice'}</button></div><div className="ios-item"><span className="ios-label">Alert Sound</span><IOSToggle checked={pharmAlertSoundEnabled} onChange={(val) => { setPharmAlertSoundEnabled(val); updateSettings({pharmAlertSoundEnabled: val}); }} /></div>{pharmAlertSoundEnabled && (<div className="ios-item-col"><div className="flex justify-between items-center"><span className="ios-label">Sound Type</span><div className="flex gap-2 items-center"><select className="bg-slate-100 font-bold text-blue-600 outline-none rounded-lg px-2 py-1 text-xs" value={alertSoundType} onChange={e => { setAlertSoundType(e.target.value); updateSettings({alertSoundType: e.target.value}); }}>{Object.entries(ALERT_SOUNDS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}</select><button onClick={() => playAlertSound()} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700">Test</button></div></div><div className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">This sound plays on the receiving station (Doctor or Pharmacy) when an alert is sent. Synthesized locally — no network needed.</div></div>)}<div className="ios-item"><span className="ios-label">Voice Gender</span><select className="bg-transparent font-bold text-blue-600 outline-none text-right" value={voiceGender} onChange={e => {setVoiceGender(e.target.value); updateSettings({voiceGender: e.target.value})}}><option value="female">Female (English)</option><option value="male">Male (English)</option></select></div></div></div>
                                     <div>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase ml-4 mb-2 tracking-wider">Browser Notifications <span className="text-[10px] text-slate-300 normal-case ml-1">(this device only)</span></h3>
                                         <div className="ios-group">
